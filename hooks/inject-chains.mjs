@@ -84,8 +84,9 @@ async function observe(payload, offered, context) {
       ts: new Date().toISOString(),
       session_id: payload.session_id ?? null,
       // Joins to `promptId` in the Claude Code transcript, which is where the
-      // run_chain calls for this same turn live.
-      prompt_id: payload.prompt_id ?? null,
+      // run_chain calls for this same turn live. Codex sends the same idea
+      // under `turn_id`; recorded under one name so the report has one key.
+      prompt_id: payload.prompt_id ?? payload.turn_id ?? null,
       cwd: root,
       injected_bytes: Buffer.byteLength(context, "utf8"),
       prompt_chars: prompt.length,

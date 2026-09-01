@@ -196,7 +196,26 @@ Session 存在内存中（上限 32，LRU 淘汰）；server 重启后会返回 
 { "mcpServers": { "kata": { "command": "npx", "args": ["-y", "kata-mcp"] } } }
 ```
 
-prompt hook 与触发 skill 是 Claude Code 的插件功能，独立注册拿不到它们——那时 `master` 得手动调用。`KATA_PROJECT_ROOT`、`KATA_GLOBAL_DIR`、`KATA_PACKS_DIR` 可覆盖各层的默认位置（项目根目录默认为 server 进程的 cwd，`list_chains` 会报告它实际解析到了什么）。
+触发 skill 是 Claude Code 的插件功能，独立注册拿不到。`KATA_PROJECT_ROOT`、`KATA_GLOBAL_DIR`、`KATA_PACKS_DIR` 可覆盖各层的默认位置（项目根目录默认为 server 进程的 cwd，`list_chains` 会报告它实际解析到了什么）。
+
+**prompt hook 并非 Claude Code 专属。Codex CLI** 有同名的 `UserPromptSubmit` 事件、stdin 上同样有 `prompt` 字段、响应同样是 `hookSpecificOutput.additionalContext`，所以这支 hook 脚本原封不动就能跑。它在 git checkout 里而不在 npm 包里（它直接 import `src/`），所以请 clone 仓库后指向它：
+
+```toml
+# ~/.codex/config.toml
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = 'node "/path/to/kata-mcp/hooks/inject-chains.mjs"'
+timeout = 5
+```
+
+两件 Codex 专属的事，都在实际运行中验证过：
+
+- **Codex 会静默跳过它还没被告知要信任的 hook。** 上面那段声明写了之后什么都不会发生，直到你打开交互式 `codex`、在 `/hooks` 里批准它；非交互的 `codex exec` 可以用 `--dangerously-bypass-hook-trust` 单次绕过。如果链清单一直没出现，原因就是这个。
+- `[shell_environment_policy.set]` 里的环境变量会传到 hook，所以 `KATA_OBSERVE` 可以设在那里。Codex 把回合叫做 `turn_id`，Claude Code 叫 `prompt_id`；观测记录两者都记成 `prompt_id`。但报表只会读 Claude Code 的 transcript，所以 Codex 的观测只能算「提供了什么」，无法对到「调用了什么」。
+
+注入文本里的工具前缀是为 Claude Code 插件写的，所以在其他 client 上那行 ToolSearch 不会对应到你的工具名——但链的清单本身仍然正确。
 
 ## 更新
 

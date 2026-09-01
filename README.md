@@ -339,11 +339,43 @@ audit trail. Gitignore it, and do not paste secrets into stage outputs.
 { "mcpServers": { "kata": { "command": "npx", "args": ["-y", "kata-mcp"] } } }
 ```
 
-The prompt hook and the trigger skill are Claude Code plugin features, so a
-standalone registration does not get them — `master` then has to be called by
-hand. `KATA_PROJECT_ROOT`, `KATA_GLOBAL_DIR` and `KATA_PACKS_DIR` override the
-default layer locations (the project root defaults to the server process cwd,
-and `list_chains` reports what it resolved).
+The trigger skill is a Claude Code plugin feature and a standalone registration
+does not get it. `KATA_PROJECT_ROOT`, `KATA_GLOBAL_DIR` and `KATA_PACKS_DIR`
+override the default layer locations (the project root defaults to the server
+process cwd, and `list_chains` reports what it resolved).
+
+The prompt hook is not exclusive to Claude Code. **Codex CLI** has the same
+`UserPromptSubmit` event, with the same `prompt` field on stdin and the same
+`hookSpecificOutput.additionalContext` response, so the hook script runs there
+unchanged. It lives in the git checkout rather than the npm package (it imports
+`src/` directly), so clone the repo and point at it:
+
+```toml
+# ~/.codex/config.toml
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = 'node "/path/to/kata-mcp/hooks/inject-chains.mjs"'
+timeout = 5
+```
+
+Two Codex specifics, both verified against a live run:
+
+- **Codex skips hooks it has not been told to trust, silently.** Declaring the
+  block above does nothing until you open `codex` interactively and approve it
+  under `/hooks`; a non-interactive `codex exec` can bypass that once with
+  `--dangerously-bypass-hook-trust`. If the chain list never appears, this is
+  why.
+- Environment variables from `[shell_environment_policy.set]` reach the hook,
+  so `KATA_OBSERVE` can be set there. Codex names the turn `turn_id` where
+  Claude Code says `prompt_id`; the observation log records either as
+  `prompt_id`. The report only knows how to read Claude Code transcripts,
+  though, so Codex observations count offers but cannot be joined to calls.
+
+The tool prefix in the injected text is written for the Claude Code plugin, so
+on other hosts the ToolSearch line will not match your tool names — the chain
+list itself is still correct.
 
 ## Updating
 

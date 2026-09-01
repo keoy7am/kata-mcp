@@ -118,9 +118,14 @@ describe("prompt hook wiring", () => {
       });
     const run = (extraEnv: Record<string, string>) => {
       const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "hookobs-p-"));
+      // A developer who has observation switched on globally would otherwise
+      // fail "writes nothing by default" through no fault of the code: the
+      // ambient KATA_OBSERVE is the one thing these tests must not inherit.
+      const { KATA_OBSERVE: _ambient, ...inherited } = process.env;
+      void _ambient;
       execFileSync(process.execPath, [hook], {
         encoding: "utf8",
-        env: { ...process.env, KATA_GLOBAL_DIR: chainDir, KATA_PROJECT_ROOT: cwd, ...extraEnv },
+        env: { ...inherited, KATA_GLOBAL_DIR: chainDir, KATA_PROJECT_ROOT: cwd, ...extraEnv },
         input: payload(cwd),
       });
       const log = path.join(cwd, ".claude", "kata-observations.jsonl");

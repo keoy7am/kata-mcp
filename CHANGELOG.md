@@ -26,6 +26,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Assistant transcript entries carry no prompt id, so calls are attributed by
   transcript order; only `user` entries carry the id, and tool results repeat
   it, which puts the boundary in the right place.
+- The observation record takes Codex's `turn_id` as `prompt_id` when Claude
+  Code's field is absent, so the two hosts log one key. Documented that the
+  prompt hook runs unchanged under Codex CLI, that Codex silently skips a hook
+  until it is trusted under `/hooks`, and that `[shell_environment_policy.set]`
+  is where `KATA_OBSERVE` goes there — all three checked against a live
+  `codex exec`.
 
 ## [1.0.2] — 2026-09-01
 
