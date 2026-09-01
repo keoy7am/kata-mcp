@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Observation mode (`KATA_OBSERVE=1`, or `=full` to include the prompt text).
+  Off by default. Appends one JSONL line per prompt to
+  `<project>/.claude/kata-observations.jsonl` recording which chains were
+  offered, which kept their trigger clause, the injected byte count, the
+  prompt's length and a short hash, and the session and prompt ids.
+  The Claude Code transcript does not record what a hook injected, so without
+  this there is no way to ask afterwards whether the list was even in front of
+  the model on a given turn.
+- `scripts/observe-report.mjs`, which joins that log against the transcript and
+  reports how many observed turns called a chain and an offered/called count
+  per chain. Assistant transcript entries carry no prompt id, so calls are
+  attributed by transcript order; only `user` entries carry the id, and tool
+  results repeat it, which puts the boundary in the right place.
+
+## [1.0.2] — 2026-09-01
+
+### Changed
+
+- Documentation only. The README stopped claiming the hook selects relevant
+  chains — it does not read the prompt at all — and gained a TL;DR plus a
+  section stating that the central claim is unproven. Published so the page on
+  npm carries the corrected text rather than the claim it replaced.
+
 ## [1.0.1] — 2026-09-01
 
 ### Fixed
@@ -35,5 +62,6 @@ First public release.
 - JSONL execution traces per staged/freeform run, with a repeat signal over a
   48-hour window.
 
+[1.0.2]: https://github.com/keoy7am/kata-mcp/releases/tag/v1.0.2
 [1.0.1]: https://github.com/keoy7am/kata-mcp/releases/tag/v1.0.1
 [1.0.0]: https://github.com/keoy7am/kata-mcp/releases/tag/v1.0.0

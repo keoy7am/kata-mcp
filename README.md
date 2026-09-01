@@ -186,6 +186,51 @@ unproven**. If you install it, install it as an experiment.
   shareable files — and only the last of those is unambiguously worth
   something.
 
+### Optional: observation mode
+
+**Off by default.** `KATA_OBSERVE=1` appends one JSONL line per prompt to
+`<project>/.claude/kata-observations.jsonl`: which chains were offered, which
+kept their trigger clause, the injected byte count, the prompt's length and a
+short hash, and the session and prompt ids. `KATA_OBSERVE=full` adds the prompt
+text itself.
+
+It exists because of a gap that is otherwise unfixable: **the transcript does
+not record what a hook injected**, so "was the list even in front of the model
+on this turn?" cannot be answered after the fact. That is the missing half of
+every question in the section above.
+
+```bash
+node scripts/observe-report.mjs            # or --project <dir>, --json
+```
+
+The report joins the log against the Claude Code transcript — assistant entries
+carry no prompt id, so calls are attributed by transcript order — and prints how
+many observed turns called a chain, the median injected bytes, and an
+offered/called count per chain.
+
+**Read the per-chain column, not the headline rate.** A low overall rate is not
+a failure: most turns are not supposed to need a chain, which is what PASS is
+for. The number that means something without any judgement call is per-chain —
+a chain offered hundreds of times and never called has triggers that do not
+work, and that is actionable today.
+
+What it still cannot tell you is whether a chain *should* have been called.
+That needs someone to read the turns and decide, and nothing here automates it.
+
+Gitignore the log. At `=full` it contains everything you typed.
+
+<details>
+<summary>A first look, before this mode existed</summary>
+
+Counting `run_chain` calls straight out of 2,202 local transcripts: of 225
+interactive turns after the plugin was installed, 35 called a chain — 15.6%,
+and near-identical in the two projects measured (15.9% and 15.1%). Treat it as
+an order of magnitude and nothing more: the denominator is every turn rather
+than every turn where the list was shown, both projects belong to the author,
+and one of them is this repository.
+
+</details>
+
 The comment at the top of `hooks/inject-chains.mjs` records the incident that
 shaped the hook's wording: the chain list was injected, the names were printed,
 and the model still spent its tool search elsewhere and made zero chain calls.

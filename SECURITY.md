@@ -40,6 +40,12 @@ trail: anything with write access to the project can edit them.
   names are rejected, and Windows reserved device names (`con`, `aux`, `com1`…)
   are rejected so a chain file can never claim one.
 - Trace files under `<project>/.claude/thinking-traces/`.
+- `<project>/.claude/kata-observations.jsonl`, **only when `KATA_OBSERVE` is
+  set** — off by default. At `KATA_OBSERVE=1` it records what the hook offered
+  plus the prompt's length and a truncated hash; at `KATA_OBSERVE=full` it also
+  records the prompt text verbatim. Treat that file the way you would treat a
+  shell history: gitignore it, and do not enable `full` on a machine where you
+  paste credentials into prompts.
 
-Nothing else on your filesystem is written, and no path outside those two
+Nothing else on your filesystem is written, and no path outside those
 directories is ever constructed from user- or model-supplied input.

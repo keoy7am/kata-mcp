@@ -37,6 +37,72 @@ function emit(context) {
   );
 }
 
+/**
+ * Observation mode (KATA_OBSERVE=1, or =full to include the prompt text).
+ *
+ * The transcript does not record what a hook injected, so "was the list even in
+ * front of the model on this turn?" is unanswerable after the fact — which is
+ * why this project has never been able to say anything about whether chains get
+ * used when they should. Writing the offer down is the only way to get that
+ * side of the pair; the other side is already in the transcript, and
+ * `prompt_id` joins them.
+ *
+ * Off by default. It records what your agent was offered and, at =full, what
+ * you typed — so it is a file worth reading before enabling and worth
+ * gitignoring after.
+ */
+async function readPayload() {
+  if (!process.env.KATA_OBSERVE) return null;
+  try {
+    const raw = await Promise.race([
+      new Promise((resolve) => {
+        let data = "";
+        process.stdin.setEncoding("utf8");
+        process.stdin.on("data", (c) => (data += c));
+        process.stdin.on("end", () => resolve(data));
+        process.stdin.on("error", () => resolve(""));
+      }),
+      new Promise((resolve) => setTimeout(() => resolve(""), 300)),
+    ]);
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function observe(payload, offered, context) {
+  if (!payload) return;
+  try {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { createHash } = await import("node:crypto");
+    const root = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const dir = path.join(root, ".claude");
+    fs.mkdirSync(dir, { recursive: true });
+    const prompt = typeof payload.prompt === "string" ? payload.prompt : "";
+    const record = {
+      ts: new Date().toISOString(),
+      session_id: payload.session_id ?? null,
+      // Joins to `promptId` in the Claude Code transcript, which is where the
+      // run_chain calls for this same turn live.
+      prompt_id: payload.prompt_id ?? null,
+      cwd: root,
+      injected_bytes: Buffer.byteLength(context, "utf8"),
+      prompt_chars: prompt.length,
+      prompt_sha256: prompt ? createHash("sha256").update(prompt, "utf8").digest("hex").slice(0, 16) : null,
+      offered,
+      ...(process.env.KATA_OBSERVE === "full" ? { prompt } : {}),
+    };
+    fs.appendFileSync(path.join(dir, "kata-observations.jsonl"), JSON.stringify(record) + "\n", "utf8");
+  } catch {
+    /* observation must never cost the user their chain list */
+  }
+}
+
+// Read before anything else can fail: an observation of a run that then threw
+// is still worth having, and stdin is only consumed when observing is on.
+const payload = await readPayload();
+
 try {
   // Shares the real loader and LIMITS (single source for validation and caps),
   // resolved relative to this script. TypeScript straight from src: Node strips
@@ -86,7 +152,13 @@ try {
     }
     if (!over()) lines.push(tail());
   }
-  emit(lines.join("\n"));
+  const context = lines.join("\n");
+  emit(context);
+  await observe(
+    payload,
+    chains.map((c) => ({ name: c.name, scope: c.scope, full: shown.has(c.name) })),
+    context,
+  );
 } catch (err) {
   // Still never block the prompt — but say so. A bare HEAD with no chain list is
   // indistinguishable from "this machine has no chains", and that ambiguity is

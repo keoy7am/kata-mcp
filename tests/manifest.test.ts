@@ -101,6 +101,57 @@ describe("prompt hook wiring", () => {
     }
   });
 
+  describe("observation mode (opt-in)", () => {
+    const chainDir = fs.mkdtempSync(path.join(os.tmpdir(), "hookobs-c-"));
+    fs.writeFileSync(
+      path.join(chainDir, "probe.md"),
+      "---\nname: probe\ndescription: Probe. Use when verifying.\nmode: checklist\n---\nbody\n",
+      "utf8",
+    );
+    const payload = (cwd: string) =>
+      JSON.stringify({
+        session_id: "s-1",
+        prompt_id: "p-1",
+        cwd,
+        hook_event_name: "UserPromptSubmit",
+        prompt: "a secret-bearing prompt",
+      });
+    const run = (extraEnv: Record<string, string>) => {
+      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "hookobs-p-"));
+      execFileSync(process.execPath, [hook], {
+        encoding: "utf8",
+        env: { ...process.env, KATA_GLOBAL_DIR: chainDir, KATA_PROJECT_ROOT: cwd, ...extraEnv },
+        input: payload(cwd),
+      });
+      const log = path.join(cwd, ".claude", "kata-observations.jsonl");
+      return fs.existsSync(log) ? JSON.parse(fs.readFileSync(log, "utf8").trim()) : null;
+    };
+
+    it("writes nothing by default", () => {
+      expect(run({})).toBeNull();
+    });
+
+    it("records the offer, and the join key the transcript needs", () => {
+      const rec = run({ KATA_OBSERVE: "1" });
+      expect(rec.prompt_id).toBe("p-1");
+      expect(rec.session_id).toBe("s-1");
+      expect(rec.injected_bytes).toBeGreaterThan(0);
+      expect(rec.offered.map((o: { name: string }) => o.name)).toContain("probe");
+    });
+
+    it("does not record the prompt text unless asked twice over", () => {
+      // KATA_OBSERVE=1 is a metadata log someone might leave on for weeks; the
+      // prompt itself only lands on disk under the louder setting.
+      const meta = run({ KATA_OBSERVE: "1" });
+      expect(meta.prompt).toBeUndefined();
+      expect(meta.prompt_sha256).toBeTruthy();
+      expect(meta.prompt_chars).toBe("a secret-bearing prompt".length);
+
+      const full = run({ KATA_OBSERVE: "full" });
+      expect(full.prompt).toBe("a secret-bearing prompt");
+    });
+  });
+
   it("emits a chain list for a chain in the configured global dir", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hookcheck-"));
     fs.writeFileSync(
