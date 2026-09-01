@@ -199,8 +199,12 @@ unproven**. If you install it, install it as an experiment.
   n=119), another's rose (6.3% → 11.4%, n=35), tool-error rate did not move,
   and every "after" turn also ran a newer Claude Code than most "before" turns.
   Those are proxies, not quality — but there is no signal in them to advertise.
-  The script is `scripts/before-after.py`; it reads local Claude Code
-  transcripts, so anyone can run it on their own.
+  Re-run at matched context depth — only turns where the model saw ≥200k
+  tokens, the owner's actual pain case — the split is identical: one model
+  better on every proxy, the other worse on every proxy. So it is not an
+  artifact of session length; it is still not a signal. The scripts are
+  `scripts/before-after.py` and `scripts/before-after-by-context.py`; both
+  read local Claude Code transcripts, so anyone can run them on their own.
 
 ### Optional: observation mode
 

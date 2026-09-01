@@ -20,6 +20,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a before/after on the author's transcripts found no consistent signal. It
   reads local Claude Code transcripts and stratifies by model and version;
   the README bullet quotes its output.
+- `scripts/before-after-by-context.py`, the same comparison at matched
+  context depth, bucketing each turn by the prompt size the model actually saw
+  (`usage` on the first assistant reply). The before period is dominated by
+  one-turn sessions with a 42k median peak context and the after period by
+  five-turn sessions at 158k, so an unmatched comparison mostly measures that.
+  In the one bucket both periods populate (≥200k tokens) the split is the
+  same as before: one model better on every proxy, the other worse.
 
 ### Changed
 
