@@ -1,6 +1,6 @@
 {
   "name": "kata-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for kata — reusable thinking routines defined as Markdown files, routed to a coding agent at the moment the task matches",
   "keywords": [
     "mcp",
