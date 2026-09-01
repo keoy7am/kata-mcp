@@ -110,7 +110,9 @@ matters: nothing in the repository can be older than the source beside it.
 
 The hook's import graph — `hooks/inject-chains.mjs`, `src/loader.ts`,
 `src/types.ts`, `src/builtins.ts` — is dependency-free, because the plugin
-checkout never gets an `npm install`. That is why frontmatter is parsed by hand
+checkout cannot count on ever getting an `npm install` — a bare `git clone`, an
+offline machine, or a host that skipped or failed the install all reach the same
+state. That is why frontmatter is parsed by hand
 instead of with a YAML library, and why the loader's validation does not use the
 schema library the MCP server uses. A test asserts the property directly; CI
 runs the hook in a checkout with no `node_modules`, which is the only place the

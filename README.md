@@ -245,7 +245,9 @@ test suite fails if any of those drift, or if a fourth copy appears.
 Two constraints are easy to break by accident and are enforced by tests:
 everything the prompt hook imports must stay dependency-free and free of
 non-erasable TypeScript (no `enum`, no parameter properties), because that code
-runs from a plugin checkout where `npm install` has never been run.
+runs from a plugin checkout whose dependencies may never have been installed
+— a bare `git clone`, an offline machine, a host that skipped or failed the
+install.
 
 ## Design notes
 

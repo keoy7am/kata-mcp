@@ -156,7 +156,7 @@ npm run typecheck
 
 發版：`npm version patch|minor|major`。`package.json` 是版本的單一來源——`src/index.ts` 啟動時讀它，所以 server 回報給客戶端的版本是衍生的；`version` 生命週期腳本會寫入 `.claude-plugin/plugin.json` 與 `plugin.mcp.json` 裡釘住的版本。這幾份一旦不一致，或出現第四份副本，測試就會失敗。
 
-有兩條約束特別容易不小心破壞，已由測試強制執行：**prompt hook 匯入到的一切必須零依賴，且不得使用不可抹除的 TypeScript**（不能有 `enum`、不能有 constructor 參數屬性），因為那些程式碼是在一個從未 `npm install` 過的 plugin checkout 裡執行的。
+有兩條約束特別容易不小心破壞，已由測試強制執行：**prompt hook 匯入到的一切必須零依賴，且不得使用不可抹除的 TypeScript**（不能有 `enum`、不能有 constructor 參數屬性），因為那些程式碼執行時，plugin checkout 的依賴不保證裝過——裸 `git clone`、離線機器、或宿主跳過／裝失敗，結果都一樣。
 
 ## 設計筆記
 

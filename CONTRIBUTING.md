@@ -21,7 +21,8 @@ publishing (`prepublishOnly`), because Node cannot strip types under
 ## Two constraints that break silently
 
 Both are enforced by tests, and both exist because the prompt hook runs inside a
-plugin checkout where `npm install` has never been run.
+plugin checkout whose dependencies may never have been installed: a bare
+`git clone`, an offline machine, or a host that skipped or failed the install.
 
 1. **`hooks/inject-chains.mjs`, `src/loader.ts`, `src/types.ts` and
    `src/builtins.ts` may import only `node:` builtins and relative paths.**
