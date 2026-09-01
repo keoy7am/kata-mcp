@@ -138,7 +138,10 @@ const median = (xs) => {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
 };
 
-const perChain = [...offeredCount.keys()]
+// Union, not just the offered names: the built-in chains (master, default) are
+// never in the hook's offer list, so keying off it alone counts their calls in
+// the headline and then hides them from the table that explains it.
+const perChain = [...new Set([...offeredCount.keys(), ...calledCount.keys()])]
   .map((name) => ({ name, offered: offeredCount.get(name) ?? 0, called: calledCount.get(name) ?? 0 }))
   .sort((a, b) => b.called - a.called || a.name.localeCompare(b.name));
 
@@ -170,8 +173,10 @@ if (asJson) {
   console.log();
   console.log("per chain (offered / called):");
   for (const c of perChain) {
-    const rate = c.offered ? ((100 * c.called) / c.offered).toFixed(1) : "0.0";
-    console.log(`  ${String(c.offered).padStart(5)} / ${String(c.called).padEnd(5)} ${rate.padStart(5)}%  ${c.name}`);
+    // A built-in is called without ever appearing in the offer list, so a rate
+    // would be dividing by zero dressed up as 0.0%.
+    const rate = c.offered ? `${((100 * c.called) / c.offered).toFixed(1)}%`.padStart(6) : " built-in";
+    console.log(`  ${String(c.offered).padStart(5)} / ${String(c.called).padEnd(5)}${rate}  ${c.name}`);
   }
   const dead = perChain.filter((c) => c.called === 0 && c.offered >= 20);
   if (dead.length) {
