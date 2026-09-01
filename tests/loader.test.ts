@@ -190,6 +190,30 @@ describe("loadAll layering", () => {
     expect(r.invalid).toEqual([]);
   });
 
+  it("translated READMEs and repo paperwork are documentation, not invalid chains", () => {
+    // A chain library is a git repo, so it ships README.zh-TW.md, CONTRIBUTING
+    // and friends. Reporting those forever trains people to ignore `invalid`.
+    const o = opts();
+    writeChain(o.globalDir, "good.md", CHECKLIST.replace("my-check", "good"));
+    writeChain(o.globalDir, "README.zh-TW.md", "# 鏈庫\n");
+    writeChain(o.globalDir, "CONTRIBUTING.md", "# Contributing\n");
+    writeChain(o.globalDir, "CHANGELOG.md", "# Changelog\n");
+    const r = loadAll(o);
+    expect(r.chains.map((c) => c.name)).toEqual(["good"]);
+    expect(r.invalid).toEqual([]);
+  });
+
+  it("a chain may still be named like repo paperwork", () => {
+    // The name alone must not disqualify a file: security.md with real
+    // frontmatter is a chain, and dropping it silently would be worse than the
+    // noise this exclusion removes.
+    const o = opts();
+    writeChain(o.globalDir, "security.md", CHECKLIST.replace("my-check", "security"));
+    const r = loadAll(o);
+    expect(r.chains.map((c) => c.name)).toEqual(["security"]);
+    expect(r.invalid).toEqual([]);
+  });
+
   it("missing directories mean zero chains, not errors", () => {
     const r = loadAll(opts());
     expect(r.chains).toEqual([]);

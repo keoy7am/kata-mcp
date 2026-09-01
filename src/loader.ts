@@ -73,6 +73,32 @@ function readPackManifest(opts: LoaderOptions): { packs: string[]; invalid: Inva
   return { packs: [...new Set(parsed.value!.packs)], invalid: [] };
 }
 
+/** Conventional repository documentation, in any of the layer directories. */
+const REPO_DOCS = new Set([
+  "contributing.md",
+  "changelog.md",
+  "license.md",
+  "code_of_conduct.md",
+  "code-of-conduct.md",
+  "security.md",
+  "authors.md",
+  "notice.md",
+]);
+
+/** README.md and every translation of it: README.zh-TW.md, README.fr.md… */
+export function isReadme(filename: string): boolean {
+  return filename.toLowerCase().startsWith("readme.");
+}
+
+export function isRepoDoc(filename: string): boolean {
+  return REPO_DOCS.has(filename.toLowerCase());
+}
+
+/** A chain file always opens with a frontmatter fence; documentation never does. */
+export function hasFrontmatter(source: string): boolean {
+  return /^﻿?---[ \t]*\r?\n/.test(source);
+}
+
 export function sha256(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
@@ -206,9 +232,9 @@ function loadDir(
   const invalid: InvalidChainFile[] = [];
   let entries: string[];
   try {
-    // README.md is the directory's own documentation (chain libraries are git
-    // repos), not a chain — skip it instead of reporting it invalid forever.
-    entries = fs.readdirSync(dir).filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md");
+    // A README is the directory's own documentation in any language, never a
+    // chain — chain libraries are git repos and always have one.
+    entries = fs.readdirSync(dir).filter((f) => f.endsWith(".md") && !isReadme(f));
   } catch (e) {
     const code = (e as NodeJS.ErrnoException).code;
     if (code === "ENOENT" || code === "ENOTDIR") {
@@ -229,6 +255,13 @@ function loadDir(
       invalid.push({ file: filePath, error: `read failed: ${(e as Error).message}` });
       continue;
     }
+    // The rest of a repo's paperwork — CONTRIBUTING, CHANGELOG, SECURITY.
+    // Reporting those as invalid chain files forever is noise that trains
+    // people to ignore the invalid list. Skipping them by name alone would
+    // silently drop a chain someone named "security", so the frontmatter fence
+    // decides: documentation has none, and a chain file that lost its
+    // frontmatter is still reported rather than vanishing.
+    if (isRepoDoc(file) && !hasFrontmatter(source)) continue;
     const result = validateChainSource(source, base);
     if (result.error) {
       invalid.push({ file: filePath, error: result.error });
