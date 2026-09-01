@@ -80,6 +80,19 @@ Enforced by tests; listed here so a change is made knowingly:
   developer with it on globally would otherwise fail "writes nothing by
   default".
 
+## Open design question, deliberately undecided
+
+Advisory versus gate. Today the hook advises and nothing enforces; the first
+observation sample included a prompt that matched a chain's trigger verbatim
+and called nothing. A gate is feasible on both hosts — a `UserPromptSubmit`
+hook marks a turn non-trivial by a rule that does not involve the model, a
+`PostToolUse` hook on `run_chain` marks that a chain ran, and a `PreToolUse`
+hook on `Edit|Write` denies until it has. It would guarantee a call, not a
+careful walk, and it would change what this project claims to be. It is not
+built. The decision waits on a short observation sample from real work, and
+on checking whether slash-command expansions are simply crowding the injected
+list out of the model's attention — a fixable cause that would come first.
+
 ## Owner's decisions, so they are not relitigated
 
 - No headline invocation rate anywhere. Recommendations with evidence only.
