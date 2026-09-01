@@ -16,6 +16,79 @@ import type { LoadResult } from "./types.ts";
  * library, a 60-char head slice cut the trigger clause off every single chain,
  * leaving chain names as the only routable signal in the prompt.
  */
+/**
+ * Words too common to carry routing signal on their own. Deliberately short:
+ * the score threshold, not this list, is what keeps noise out.
+ */
+const STOPWORDS = new Set([
+  "when", "use", "used", "using", "this", "that", "these", "those", "them", "they", "their",
+  "with", "without", "from", "into", "your", "you", "yours", "have", "has", "been", "than",
+  "then", "there", "what", "which", "while", "would", "could", "should", "about", "after",
+  "before", "because", "only", "also", "just", "even", "more", "most", "some", "such", "very",
+  "over", "under", "between", "through", "during", "against", "within", "across", "upon",
+  "onto", "each", "every", "both", "other", "another", "same", "still", "already", "does",
+  "doing", "done", "needs", "need", "make", "makes", "made", "take", "takes", "here",
+]);
+
+const QUOTED = /"([^"]{3,})"/g;
+const WORD = /[a-z][a-z0-9'-]{3,}/g;
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * How strongly one chain's trigger clause matches a prompt. Quoted literals and
+ * the chain's own name score 3 (either alone clears the threshold); an
+ * individual significant word scores 1, so two of them are needed. Nothing here
+ * is semantic — a prompt in a language the chain was not written in scores 0,
+ * and that is the intended behaviour, because zero matches means "fall back to
+ * the full list" rather than "guess".
+ */
+export function scoreChain(chain: { name: string; description: string }, prompt: string): number {
+  const lower = prompt.toLowerCase();
+  const desc = chain.description ?? "";
+  const at = desc.search(/Use when/i);
+  const trigger = (at >= 0 ? desc.slice(at + "Use when".length) : desc).toLowerCase();
+
+  let score = 0;
+  for (const m of trigger.matchAll(QUOTED)) {
+    if (lower.includes(m[1].trim())) score += 3;
+  }
+  const name = chain.name.toLowerCase();
+  if (lower.includes(name) || lower.includes(name.replace(/-/g, " "))) score += 3;
+
+  const seen = new Set<string>();
+  for (const w of trigger.match(WORD) ?? []) {
+    if (STOPWORDS.has(w) || seen.has(w)) continue;
+    seen.add(w);
+    if (new RegExp(`\\b${escapeRe(w)}\\b`).test(lower)) score += 1;
+  }
+  return score;
+}
+
+export const MATCH_MIN_SCORE = 2;
+
+/**
+ * Split chains into the ones whose triggers appear in the prompt and the rest.
+ * An empty `matched` is the normal, safe outcome: the caller then shows every
+ * chain exactly as it would without matching at all.
+ */
+export function matchChains<T extends { name: string; description: string }>(
+  chains: T[],
+  prompt: string,
+  minScore: number = MATCH_MIN_SCORE,
+): { matched: T[]; rest: T[] } {
+  if (!prompt || !prompt.trim()) return { matched: [], rest: chains };
+  const scored = chains.map((chain) => ({ chain, score: scoreChain(chain, prompt) }));
+  const matched = scored
+    .filter((s) => s.score >= minScore)
+    .sort((a, b) => b.score - a.score || a.chain.name.localeCompare(b.chain.name))
+    .map((s) => s.chain);
+  const hit = new Set(matched.map((c) => c.name));
+  return { matched, rest: chains.filter((c) => !hit.has(c.name)) };
+}
+
 export function chainHint(description: string, maxChars: number = LIMITS.HOOK_MAX_DESC_CHARS): string {
   const at = description.search(/Use when/i);
   const src = at > 0 ? description.slice(at) : description;
