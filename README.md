@@ -51,13 +51,12 @@ staged procedure where each step's output must be submitted before the next
 step's prompt is handed back.
 
 One thing to be precise about, because the whole value proposition hinges on it:
-**kata does not decide which chain is relevant.** By default the hook never
-reads your prompt: it loads every chain, sorts them by scope and name, and lists
-the first `HOOK_MAX_CHAINS` with their trigger clauses. The matching is done by
-the model, on every turn, exactly as it would be for a skill. What the trigger
-phrases buy is *ease of association*, not selection. (There is an opt-in
-literal matcher — see "Optional: narrow the injected list to the prompt" — but
-it is off unless you turn it on.)
+**kata does not decide which chain is relevant.** The hook never reads your
+prompt. It loads every chain, sorts them by scope and name, and lists the first
+`HOOK_MAX_CHAINS` with their trigger clauses. The matching is done by the model,
+on every turn, exactly as it would be for a skill. What the trigger phrases buy
+is *ease of association*, not selection — there is no literal matcher anywhere
+in this codebase.
 
 This is a *policy injector and process driver*, deliberately not a "make the
 model think harder" tool. That half is already covered by interleaved thinking
@@ -150,30 +149,6 @@ looking at before installing anything:
 The router exists to keep this honest: trivial tasks are supposed to return
 PASS and pay nothing beyond the injected list. Whether that actually happens is
 the model's decision, and nothing records it — see below.
-
-### Optional: narrow the injected list to the prompt
-
-**Off by default.** Set `KATA_PROMPT_MATCH=1` and, on a host whose
-`UserPromptSubmit` hook delivers the prompt text, the hook keeps the full
-trigger clause only for chains whose triggers appear in your prompt, drops the
-rest to bare names, and prefixes the list with the names it matched.
-
-Measured on the reference library: **2,313 bytes → 805 bytes** when something
-matches.
-
-Matching is literal, not semantic. A quoted trigger phrase or the chain's own
-name scores 3; each further significant word scores 1; the threshold is 2.
-**A prompt written in a language your chains are not scores zero** — and zero
-matches produces byte-identical output to leaving the feature off, which is
-also exactly what happens on a host that sends no prompt at all. That fallback
-is the design: this can subtract bytes, never the list.
-
-Hosts known to deliver the prompt: **Claude Code** (verified against a live
-session) and **Codex CLI** (per its hooks documentation — see below).
-
-It is opt-in because the research that motivates it measures *retrieval-based*
-tool selection, which is not the same thing. The byte reduction is measured.
-Any benefit to routing is not.
 
 ## What this does not prove
 
@@ -305,30 +280,11 @@ audit trail. Gitignore it, and do not paste secrets into stage outputs.
 { "mcpServers": { "kata": { "command": "npx", "args": ["-y", "kata-mcp"] } } }
 ```
 
-The trigger skill is a Claude Code plugin feature and a standalone registration
-does not get it. `KATA_PROJECT_ROOT`, `KATA_GLOBAL_DIR` and `KATA_PACKS_DIR`
-override the default layer locations (the project root defaults to the server
-process cwd, and `list_chains` reports what it resolved).
-
-The prompt hook is not exclusive to Claude Code. **Codex CLI** has the same
-`UserPromptSubmit` event, with the same `prompt` field on stdin and the same
-`hookSpecificOutput.additionalContext` response, so the hook script runs there
-unchanged. It lives in the git checkout rather than the npm package (it imports
-`src/` directly), so clone the repo and point at it:
-
-```toml
-# ~/.codex/config.toml
-[[hooks.UserPromptSubmit]]
-
-[[hooks.UserPromptSubmit.hooks]]
-type = "command"
-command = 'node "/path/to/kata-mcp/hooks/inject-chains.mjs"'
-timeout = 5
-```
-
-The tool prefix in the injected text is written for the Claude Code plugin, so
-on other hosts the ToolSearch line will not match your tool names — the chain
-list itself is still correct.
+The prompt hook and the trigger skill are Claude Code plugin features, so a
+standalone registration does not get them — `master` then has to be called by
+hand. `KATA_PROJECT_ROOT`, `KATA_GLOBAL_DIR` and `KATA_PACKS_DIR` override the
+default layer locations (the project root defaults to the server process cwd,
+and `list_chains` reports what it resolved).
 
 ## Updating
 

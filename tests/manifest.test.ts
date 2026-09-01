@@ -101,53 +101,6 @@ describe("prompt hook wiring", () => {
     }
   });
 
-  describe("prompt matching (opt-in)", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hookmatch-"));
-    fs.writeFileSync(
-      path.join(dir, "leaky.md"),
-      '---\nname: leaky\ndescription: Leak hunt. Use when "worked yesterday, broken today".\nmode: checklist\n---\nbody\n',
-      "utf8",
-    );
-    fs.writeFileSync(
-      path.join(dir, "styling.md"),
-      "---\nname: styling\ndescription: Visual work. Use when changing CSS or layout.\nmode: checklist\n---\nbody\n",
-      "utf8",
-    );
-    const env = { ...process.env, KATA_GLOBAL_DIR: dir, KATA_PROJECT_ROOT: dir };
-    const run = (extraEnv: Record<string, string>, input: string) =>
-      JSON.parse(execFileSync(process.execPath, [hook], { encoding: "utf8", env: { ...env, ...extraEnv }, input }))
-        .hookSpecificOutput.additionalContext as string;
-
-    it("is off by default: stdin is not even read", () => {
-      const ctx = run({}, '{"prompt":"worked yesterday, broken today"}');
-      expect(ctx).not.toContain("Your prompt matched");
-      expect(ctx).toContain("- leaky:");
-      expect(ctx).toContain("- styling:");
-    });
-
-    it("keeps only the matching chain's trigger clause, demoting the rest to names", () => {
-      const ctx = run({ KATA_PROMPT_MATCH: "1" }, '{"prompt":"it worked yesterday, broken today"}');
-      expect(ctx).toContain("Your prompt matched: leaky.");
-      expect(ctx).toContain("- leaky:");
-      expect(ctx).not.toContain("- styling:");
-      expect(ctx).toContain("- also: styling");
-    });
-
-    it("zero matches produces byte-identical output to having the feature off", () => {
-      // The safety property the whole design rests on: a prompt in another
-      // language, or one that simply matches nothing, must not lose the list.
-      const off = run({}, '{"prompt":"這個測試壞掉了"}');
-      const on = run({ KATA_PROMPT_MATCH: "1" }, '{"prompt":"這個測試壞掉了"}');
-      expect(on).toBe(off);
-    });
-
-    it("a host that sends no prompt lands on the off path", () => {
-      const off = run({}, "");
-      const on = run({ KATA_PROMPT_MATCH: "1" }, "");
-      expect(on).toBe(off);
-    });
-  });
-
   it("emits a chain list for a chain in the configured global dir", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hookcheck-"));
     fs.writeFileSync(

@@ -37,36 +37,6 @@ function emit(context) {
   );
 }
 
-/**
- * Opt-in (KATA_PROMPT_MATCH=1), because it changes what the model is shown and
- * nothing here proves that change helps. Off by default, and a host that sends
- * no prompt on stdin lands on the same path as off — so enabling it on a client
- * that does not support it costs nothing but this read.
- *
- * The race is not optional: a host that opens stdin and never closes it would
- * otherwise hang the hook until its timeout and the prompt would lose its chain
- * list entirely, which is a far worse failure than not matching.
- */
-async function readPrompt() {
-  if (process.env.KATA_PROMPT_MATCH !== "1") return "";
-  try {
-    const raw = await Promise.race([
-      new Promise((resolve) => {
-        let data = "";
-        process.stdin.setEncoding("utf8");
-        process.stdin.on("data", (c) => (data += c));
-        process.stdin.on("end", () => resolve(data));
-        process.stdin.on("error", () => resolve(""));
-      }),
-      new Promise((resolve) => setTimeout(() => resolve(""), 300)),
-    ]);
-    const payload = JSON.parse(raw);
-    return typeof payload?.prompt === "string" ? payload.prompt : "";
-  } catch {
-    return "";
-  }
-}
-
 try {
   // Shares the real loader and LIMITS (single source for validation and caps),
   // resolved relative to this script. TypeScript straight from src: Node strips
@@ -74,7 +44,7 @@ try {
   // the hook has to work in a plugin checkout where nothing was ever installed.
   const { loadAll, resolveOptions } = await import(new URL("../src/loader.ts", import.meta.url));
   const { LIMITS } = await import(new URL("../src/types.ts", import.meta.url));
-  const { chainHint, matchChains } = await import(new URL("../src/builtins.ts", import.meta.url));
+  const { chainHint } = await import(new URL("../src/builtins.ts", import.meta.url));
   const opts = resolveOptions({
     ...process.env,
     KATA_PROJECT_ROOT: process.env.KATA_PROJECT_ROOT || process.env.CLAUDE_PROJECT_DIR || process.cwd(),
@@ -90,22 +60,13 @@ try {
     (a, b) => rank(a.scope) - rank(b.scope) || a.name.localeCompare(b.name),
   );
 
-  // With matching on and something actually hit, only the hits keep their
-  // trigger clause and everything else drops to a name. Zero hits is the
-  // ordinary case (a prompt in another language always scores zero), and it
-  // deliberately produces the exact output matching-off would have produced.
-  const { matched, rest: unmatched } = matchChains(chains, await readPrompt());
-  const described = matched.length ? matched : chains;
-  const demoted = matched.length ? unmatched : [];
-
   // Names + a trimmed hint are enough here — run_chain("master") carries the
   // full descriptions. Trimming lets many chains fit instead of a verbose few;
   // chainHint keeps the "Use when" trigger half, since the summary half only
   // restates the name printed beside it.
   const lines = [HEAD];
-  if (matched.length) lines.push(`Your prompt matched: ${matched.map((c) => c.name).join(", ")}.`);
   const shown = new Set();
-  for (const c of described.slice(0, LIMITS.HOOK_MAX_CHAINS)) {
+  for (const c of chains.slice(0, LIMITS.HOOK_MAX_CHAINS)) {
     const candidate = `- ${c.name}: ${chainHint(c.description)}`;
     if (Buffer.byteLength([...lines, candidate].join("\n"), "utf8") > LIMITS.HOOK_MAX_BYTES) break;
     lines.push(candidate);
@@ -114,7 +75,7 @@ try {
   // Chains that did not fit with a description still get named (names are
   // ~20 bytes; visibility matters more than the hint). If the name list itself
   // does not fit, described lines are demoted to names until everything fits.
-  const rest = [...described.filter((c) => !shown.has(c.name)), ...demoted].map((c) => c.name);
+  const rest = chains.filter((c) => !shown.has(c.name)).map((c) => c.name);
   if (rest.length) {
     const tail = () => `- also: ${rest.join(", ")}`;
     const over = () =>

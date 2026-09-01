@@ -31,7 +31,7 @@
 
 **kata 把那些規矩變成檔案**，並在每個 prompt 把一份**有界的目錄**擺到模型面前——一份帶觸發語的短清單，不是一大段要它重讀的指令。一條鏈要嘛是一次回傳整份的 checklist，要嘛是逐階段的 staged 程序：這一階段的產出提交之後，才拿得到下一階段的提示。
 
-有一點必須講精確，因為整個價值主張都掛在上面：**kata 預設不判斷哪條鏈相關。** hook 預設從不讀你的 prompt：它載入全部的鏈，按 scope 與名稱排序，列出前 `HOOK_MAX_CHAINS` 條與它們的觸發語句。**配對是模型做的**，每一輪都是，跟 skill 的情況一樣。觸發語句買到的是**比較容易產生聯想**，不是「幫你選好了」。（有一個 opt-in 的字面比對器，見「選用：把注入清單縮到與 prompt 相關的部分」，但**不開就不存在**。）
+有一點必須講精確，因為整個價值主張都掛在上面：**kata 不判斷哪條鏈相關。** hook 從不讀你的 prompt。它載入全部的鏈，按 scope 與名稱排序，列出前 `HOOK_MAX_CHAINS` 條與它們的觸發語句。**配對是模型做的**，每一輪都是，跟 skill 的情況一樣。觸發語句買到的是**比較容易產生聯想**，不是「幫你選好了」——這個 codebase 裡沒有任何字面比對器。
 
 這是一個**政策注入器與流程驅動器**，刻意**不是**「讓模型多想一點」的工具。後者現在的模型靠內建的交錯思考已經覆蓋了——這也是為什麼路由器會把瑣碎任務直接判 PASS。
 
@@ -89,18 +89,6 @@ git clone https://github.com/keoy7am/kata-chains.git ~/.claude/kata
 - 這些數值與它們的訂定依據都在 `src/types.ts`，那是所有上限的單一事實來源。
 
 路由器存在的意義就是維持這份誠實：瑣碎任務應該回 PASS，除了那份注入清單之外不再多付。至於實際上有沒有發生——那是模型的決定，而且沒有任何東西記錄它，見下一節。
-
-### 選用：把注入清單縮到與 prompt 相關的部分
-
-**預設關閉。** 設 `KATA_PROMPT_MATCH=1`，在 `UserPromptSubmit` hook 會送出 prompt 原文的 client 上，hook 只保留「觸發語出現在你 prompt 裡」那幾條的完整觸發語句，其餘降為只列名字，並在清單前面加一行標出命中了哪些。
-
-對參考鏈庫實測：命中時 **2313 bytes → 805 bytes**。
-
-比對是**字面的，不是語意的**。引號裡的觸發片語或鏈名本身得 3 分，其餘每個有意義的字得 1 分，門檻 2 分。**用你的鏈沒有使用的語言寫的 prompt 會得 0 分**——而零命中產生的輸出**與關閉此功能逐位元相同**，這也正是「client 根本不送 prompt」時的結果。這個回退就是整個設計的重點：**它只可能減少位元組，不可能弄丟清單。**
-
-已知會送出 prompt 的 client：**Claude Code**（已在實際 session 驗證）與 **Codex CLI**（依其 hooks 文件，見下）。
-
-之所以做成 opt-in：啟發它的研究量的是**基於檢索**的工具選擇，那不是同一件事。位元組的減少是量到的，對路由的助益不是。
 
 ## 這是實驗性的，有效性無法證明
 
@@ -174,21 +162,7 @@ Session 存在記憶體（上限 32，LRU 淘汰）；server 重啟後會回 `SE
 { "mcpServers": { "kata": { "command": "npx", "args": ["-y", "kata-mcp"] } } }
 ```
 
-觸發 skill 是 Claude Code 的 plugin 功能，獨立註冊拿不到。`KATA_PROJECT_ROOT`、`KATA_GLOBAL_DIR`、`KATA_PACKS_DIR` 可覆蓋層級的預設位置（專案根目錄預設為 server 行程的 cwd，`list_chains` 會回報它實際解析到什麼）。
-
-**prompt hook 並非 Claude Code 專屬。Codex CLI** 有同名的 `UserPromptSubmit` 事件、stdin 上同樣有 `prompt` 欄位、回應同樣是 `hookSpecificOutput.additionalContext`，所以這支 hook 腳本原封不動就能跑。它在 git checkout 裡而不在 npm 套件裡（它直接 import `src/`），所以請 clone repo 後指向它：
-
-```toml
-# ~/.codex/config.toml
-[[hooks.UserPromptSubmit]]
-
-[[hooks.UserPromptSubmit.hooks]]
-type = "command"
-command = 'node "/path/to/kata-mcp/hooks/inject-chains.mjs"'
-timeout = 5
-```
-
-注入文字裡的工具前綴是為 Claude Code plugin 寫的，所以在其他 client 上那行 ToolSearch 不會對應到你的工具名稱——但鏈的清單本身仍然正確。
+prompt hook 與觸發 skill 是 Claude Code 的 plugin 功能，獨立註冊拿不到它們——那時 `master` 得手動呼叫。`KATA_PROJECT_ROOT`、`KATA_GLOBAL_DIR`、`KATA_PACKS_DIR` 可覆蓋層級的預設位置（專案根目錄預設為 server 行程的 cwd，`list_chains` 會回報它實際解析到什麼）。
 
 ## 更新
 
