@@ -14,28 +14,53 @@ English · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md)
 
 </div>
 
+## TL;DR — read this before spending more time
+
+- **What it is.** Your procedures as Markdown files, re-listed in front of the
+  model on every prompt, plus a tool that walks the multi-step ones one stage at
+  a time.
+- **What it does not do.** It does not pick the procedure for you. The hook
+  never reads your prompt — it repeats a bounded catalog, and the model does all
+  the matching, the same way it would for an Agent Skill.
+- **What it costs.** 2,313 bytes of context on every prompt with the reference
+  library (15 chains). Permanent cost, occasional benefit.
+- **Evidence that it helps.** None. No A/B, no measured effect on rule-following
+  or output quality. Everything documented here is mechanism, not efficacy.
+- **Skip it if** you want something that selects the right procedure for you,
+  guarantees the model follows one, or comes with data behind it.
+- **Maybe worth it if** you already keep methodology notes and want them
+  versioned, diffable, shareable, and put back in front of the model every turn
+  instead of retyped every session.
+
 ## The problem
 
-Modern models think perfectly well on their own. What they do not do is
-reliably remember, at the moment it matters, *which procedure this particular
-task deserves* — what to check before calling something done, where to cut into
-an unfamiliar bug, whether an abstraction is earning its place.
+Modern models think perfectly well on their own. What they do not reliably do is
+**invoke the right procedure at the moment it applies** — what to check before
+calling something done, where to cut into an unfamiliar bug, whether an
+abstraction is earning its place.
 
 You know those routines. You have explained them before. You will explain them
 again in the next session, and the one after that, because nothing carries them
-across.
+across. And a rule that is present but not invoked fails exactly like a rule
+that correctly did not apply: silently, and identically from the outside.
 
-**kata makes those routines files.** You write them once, keep them in version
-control, and a router puts the relevant ones in front of the model on every
-prompt — as a bounded list it can act on, not a wall of instructions it has to
-re-read. A chain can be a checklist returned whole, or a staged procedure that
-walks the model through one step at a time, each step's output written before
-the next step's prompt is seen.
+**kata makes those routines files**, and puts a bounded catalog of them in front
+of the model on every prompt — a short list with trigger phrases, not a wall of
+instructions to re-read. A chain is either a checklist returned whole, or a
+staged procedure where each step's output must be submitted before the next
+step's prompt is handed back.
+
+One thing to be precise about, because the whole value proposition hinges on it:
+**kata does not decide which chain is relevant.** The hook never reads your
+prompt. It loads every chain, sorts them by scope and name, and lists the first
+`HOOK_MAX_CHAINS` with their trigger clauses. The matching is done by the model,
+on every turn, exactly as it would be for a skill. What the trigger phrases buy
+is *ease of association*, not selection — there is no literal matcher anywhere
+in this codebase.
 
 This is a *policy injector and process driver*, deliberately not a "make the
 model think harder" tool. That half is already covered by interleaved thinking
-in current models, which is why the router sends trivial tasks straight to PASS
-and costs you nothing.
+in current models, which is why the router sends trivial tasks straight to PASS.
 
 ## Concepts
 
@@ -99,25 +124,74 @@ exist, the server never started — check `node --version`.
 
 ## What it costs
 
-Every prompt carries an injected list of your chains, so this is not free and
-the numbers are worth stating plainly:
+Every prompt carries an injected list of your chains, so this is not free. The
+cost is permanent and the benefit is occasional, which is the trade worth
+looking at before installing anything:
 
 - The `UserPromptSubmit` hook injects at most `HOOK_MAX_CHAINS` (16) chains
   within `HOOK_MAX_BYTES`, each trigger clause trimmed to `HOOK_MAX_DESC_CHARS`
-  (155). Chains past the budget are listed by name only. That is roughly
-  **1–3 KB of context per prompt**, and it is the entire routing signal.
-- Injecting the *summary* half of every description as well was measured at
-  **~30k extra context tokens over 50 turns** — about 19 `master` calls' worth,
-  to avoid the 1–3 `master` calls a session actually makes. That is why the
-  description format splits, and why only the trigger half is injected.
+  (155). Chains past the budget are listed by name only. **Measured against the
+  reference library (15 chains): 2,313 bytes per prompt.** The computed ceiling
+  is 3,250 bytes. Reproduce it on your own library with
+  `node hooks/inject-chains.mjs`.
 - A checklist chain costs one round trip. A staged chain costs one per stage,
   and every stage prompt and output stays in context. Choose staged only when
   each step genuinely gates the next.
+- Injecting the *summary* half of every description as well was estimated at
+  ~30k extra context tokens over 50 turns — about 19 `master` calls' worth, to
+  avoid the 1–3 `master` calls a session actually makes. That is why the
+  description format splits. **Treat that number as an order-of-magnitude
+  estimate, not a measurement**: no tokenizer, snapshot or script was kept, so
+  it is not reproducible.
 - The values and their sizing rationale live in `src/types.ts`, which is the
   single source of truth for every limit here.
 
 The router exists to keep this honest: trivial tasks are supposed to return
-PASS and pay nothing beyond the injected list.
+PASS and pay nothing beyond the injected list. Whether that actually happens is
+the model's decision, and nothing records it — see below.
+
+## What this does not prove
+
+kata is an experiment, and the honest summary is that **its central claim is
+unproven**. If you install it, install it as an experiment.
+
+- **No A/B data.** There is no measurement of rule-following or outcome quality
+  with kata versus without. Everything below is mechanism, not efficacy.
+- **The hook does not route.** It repeats a bounded catalog; the model still
+  does all the matching. Compared with a rule in `CLAUDE.md` or an Agent Skill,
+  the differences are position, repetition, boundedness and denser wording —
+  the same medicine at a higher dose, not a different mechanism.
+- **A staged chain enforces disclosure order, not work.** The engine rejects a
+  wrong `expected_stage_index`, so the next prompt cannot be read early. It does
+  not check what you submit: `stage_output` has no minimum length, any
+  `skip_reason` advances the stage, and a whole chain can be walked to
+  `done: true` with placeholder text. It constrains a caller who chose to use
+  it; nothing forces that choice.
+- **PASS leaves no trace.** `run_chain("master")` opens no session and records
+  nothing, so "correctly decided no chain was needed", "rubber-stamped it" and
+  "never called master at all" are indistinguishable after the fact.
+- **Traces have no reader.** Staged runs write JSONL, but the only code that
+  consumes them parses filenames for the repeat signal — nothing reads stage
+  content. There is no review tool, quality gate, or completion check. Traces
+  record what the model *claimed* it did.
+- **16 chains is a capacity choice, not a measured sweet spot.** Nobody has
+  tested routing accuracy at 8, 12, 16 or 24 chains. Past the cap, which chains
+  keep their trigger clause is decided by scope and name — not by relevance to
+  the task at hand.
+- **It only surfaces chains that already exist.** Nothing detects that a task
+  needed a routine nobody has written yet.
+- **Overlap with Agent Skills is real.** For a checklist chain, a skill does
+  much the same job. The defensible differences are the staged disclosure
+  order, the traces, and the fact that chains are versioned, diffable,
+  shareable files — and only the last of those is unambiguously worth
+  something.
+
+The comment at the top of `hooks/inject-chains.mjs` records the incident that
+shaped the hook's wording: the chain list was injected, the names were printed,
+and the model still spent its tool search elsewhere and made zero chain calls.
+That is evidence the problem is real. It is equally evidence that this fix
+guarantees nothing — and it is a comment, not a captured transcript, so what
+you can verify is that the note exists, not that the session happened.
 
 ## Writing your own chain
 
