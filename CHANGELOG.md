@@ -16,11 +16,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   The Claude Code transcript does not record what a hook injected, so without
   this there is no way to ask afterwards whether the list was even in front of
   the model on a given turn.
-- `scripts/observe-report.mjs`, which joins that log against the transcript and
-  reports how many observed turns called a chain and an offered/called count
-  per chain. Assistant transcript entries carry no prompt id, so calls are
-  attributed by transcript order; only `user` entries carry the id, and tool
-  results repeat it, which puts the boundary in the right place.
+- `scripts/observe-report.mjs`, which joins that log with the transcript and
+  the trace files and prints recommendations rather than statistics: a chain
+  never called across enough sessions, a chain only ever reached through
+  `master`, a staged chain whose stages are mostly skipped, a staged chain whose
+  runs are abandoned. Thresholds (`--min-offered`, `--min-sessions`,
+  `--skip-rate`) are printed on every report. There is no headline invocation
+  rate on purpose; `--sample N` prints turns with no call for a person to judge.
+  Assistant transcript entries carry no prompt id, so calls are attributed by
+  transcript order; only `user` entries carry the id, and tool results repeat
+  it, which puts the boundary in the right place.
 
 ## [1.0.2] — 2026-09-01
 

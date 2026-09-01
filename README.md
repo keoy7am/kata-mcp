@@ -200,22 +200,36 @@ on this turn?" cannot be answered after the fact. That is the missing half of
 every question in the section above.
 
 ```bash
-node scripts/observe-report.mjs            # or --project <dir>, --json
+node scripts/observe-report.mjs            # --project <dir>  --sample N  --json
 ```
 
-The report joins the log against the Claude Code transcript — assistant entries
-carry no prompt id, so calls are attributed by transcript order — and prints how
-many observed turns called a chain, the median injected bytes, and an
-offered/called count per chain.
+The report joins that log with the Claude Code transcript (calls) and the trace
+files (how staged runs went), and prints **recommendations, not statistics** —
+every line names a chain and one edit to make to it:
 
-**Read the per-chain column, not the headline rate.** A low overall rate is not
-a failure: most turns are not supposed to need a chain, which is what PASS is
-for. The number that means something without any judgement call is per-chain —
-a chain offered hundreds of times and never called has triggers that do not
-work, and that is actionable today.
+| It says | Because | Threshold |
+|---|---|---|
+| remove, demote to a pack, or rewrite `Use when` | offered with its full clause on many turns across several sessions, never called | `--min-offered 20`, `--min-sessions 3` |
+| rewrite the start of `Use when` | called, but only ever after `master` had listed it in full — the injected clause is not doing the routing | called ≥ 3 times |
+| convert to a checklist | staged runs skip most of their stages | `--skip-rate 0.5` |
+| shorten it | staged runs are started and not completed | ≤ 50% completed |
 
-What it still cannot tell you is whether a chain *should* have been called.
-That needs someone to read the turns and decide, and nothing here automates it.
+The thresholds are judgement calls, so they are printed at the top of every
+report rather than hidden. The session gate matters: a chain that one long
+session never needed says nothing about the chain, so "never called" is
+withheld until several sessions have been observed, and the report says so.
+
+There is deliberately no headline invocation rate. Most turns are not supposed
+to need a chain — that is what PASS is for — so "N% of turns called one" is
+neither success nor failure and would only invite reading it as one. What the
+data cannot decide it says it cannot decide: `master` called and no chain after
+it is either a correct PASS or a chain that does not exist yet, and the report
+lists that count without a verdict.
+
+The one question none of this answers is whether a chain *should* have been
+called on a turn where none was. That is a judgement, and `--sample N` prints
+that many such turns (prompt text needs `KATA_OBSERVE=full`) for a person to
+make it. Nothing here automates it, on purpose.
 
 Gitignore the log. At `=full` it contains everything you typed.
 
