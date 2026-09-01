@@ -72,6 +72,23 @@ describe("version", () => {
 describe("prompt hook wiring", () => {
   const hook = path.join(root, "hooks", "inject-chains.mjs");
 
+  it("KATA_HOOK=0 emits nothing at all, so an ablation compares against absence", () => {
+    // Not an empty header, not a note that the hook is off — any text would
+    // make the "hook off" arm a different prompt rather than no prompt.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hookoff-"));
+    fs.writeFileSync(
+      path.join(dir, "probe.md"),
+      "---\nname: probe\ndescription: Probe. Use when verifying.\nmode: checklist\n---\nbody\n",
+      "utf8",
+    );
+    const out = execFileSync(process.execPath, [hook], {
+      encoding: "utf8",
+      env: { ...process.env, KATA_GLOBAL_DIR: dir, KATA_PROJECT_ROOT: dir, KATA_HOOK: "0" },
+      input: "",
+    });
+    expect(out).toBe("");
+  });
+
   it("hooks.json launches the hooks with node, not a second runtime", () => {
     // Node is the only runtime a Claude Code user is guaranteed to have. Wiring
     // a hook to anything else turns "install the plugin" into "install a runtime

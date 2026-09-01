@@ -31,6 +31,10 @@ English · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md)
 - **Maybe worth it if** you already keep methodology notes and want them
   versioned, diffable, shareable, and put back in front of the model every turn
   instead of retyped every session.
+- **This is not a recommendation.** It was built for one person's setup and
+  felt useful there. Nothing here shows that transfers, and a harness that
+  already carries the same disciplines in its own instructions may get nothing
+  from it at all.
 
 ## The problem
 
@@ -185,6 +189,18 @@ unproven**. If you install it, install it as an experiment.
   order, the traces, and the fact that chains are versioned, diffable,
   shareable files — and only the last of those is unambiguously worth
   something.
+- **If your own instructions already say these things, this is a second
+  copy.** The chains encode checks a `CLAUDE.md` can hold just as well. Where
+  it already does, the hook re-shows the same text on a minority of turns, and
+  what is left of the value is the file format.
+- **A before/after on the author's own transcripts found nothing.** About
+  4,000 interactive turns, split by model, with the sessions spent building
+  this tool excluded: one model's user-correction rate fell (11.6% → 2.5%,
+  n=119), another's rose (6.3% → 11.4%, n=35), tool-error rate did not move,
+  and every "after" turn also ran a newer Claude Code than most "before" turns.
+  Those are proxies, not quality — but there is no signal in them to advertise.
+  The script is `scripts/before-after.py`; it reads local Claude Code
+  transcripts, so anyone can run it on their own.
 
 ### Optional: observation mode
 
@@ -251,6 +267,23 @@ and the model still spent its tool search elsewhere and made zero chain calls.
 That is evidence the problem is real. It is equally evidence that this fix
 guarantees nothing — and it is a comment, not a captured transcript, so what
 you can verify is that the note exists, not that the session happened.
+
+### Testing whether it does anything for you
+
+The only way to know is to turn it off and look. There are two switches
+because there are two hypotheses:
+
+- `KATA_HOOK=0` — injection off, MCP server still up. Emits nothing, not an
+  "off" notice, so the comparison is against absence. Tests whether the
+  per-prompt list matters.
+- Disabling the plugin — everything off. Tests whether the chains matter.
+
+A protocol that fits in a week: a few days each of hook-off, all-off, and
+all-on, on your normal work, with one line of notes per day; then compare.
+Hold the model and the Claude Code version fixed across the arms — otherwise
+you are measuring those. The author's own before/after was confounded exactly
+that way, which is why it is reported above as finding nothing rather than as
+finding something.
 
 ## Writing your own chain
 

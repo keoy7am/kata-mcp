@@ -8,6 +8,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `KATA_HOOK=0` switches the prompt injection off while the MCP server stays
+  up, and emits nothing at all rather than an "off" note, so an ablation
+  compares against genuine absence. With the plugin as the only switch, "does
+  the per-prompt list change anything" and "do the chains change anything"
+  could not be separated. Tested.
+- A `CLAUDE.md` for agents working on this repository: what is established,
+  what is not, and a list of claims that were each tried and refuted in
+  review and may not be made again.
+- `scripts/before-after.py`, the analysis behind the README's statement that
+  a before/after on the author's transcripts found no consistent signal. It
+  reads local Claude Code transcripts and stratifies by model and version;
+  the README bullet quotes its output.
+
+### Changed
+
+- `skills/kata/SKILL.md` no longer says master must be called before any
+  other tool or that deciding a task is trivial without it does not count.
+  Chains are procedures the model chooses to run; PASS, and not calling at
+  all, are legitimate. The old wording was stronger than anything the README
+  is willing to claim, and was itself manufacturing part of the measured
+  invocation rate.
+
 - Observation mode (`KATA_OBSERVE=1`, or `=full` to include the prompt text).
   Off by default. Appends one JSONL line per prompt to
   `<project>/.claude/kata-observations.jsonl` recording which chains were

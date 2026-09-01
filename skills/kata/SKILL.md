@@ -9,7 +9,7 @@ This skill drives the `kata` MCP server (tools: `list_chains`, `run_chain`, `adv
 
 ## Running chains
 
-1. **Route first**: call `run_chain("master")` before any other tool. It returns the decision framework plus the live chain list. Decide: PASS (trivial task — no chains), `default` (freeform step-by-step thinking), and/or matching custom chains. PASS is a routing outcome of that call, not a reason to skip it — deciding a task is trivial without asking `master` is not the same as `master` returning PASS.
+1. **Route when a task is non-trivial**: `run_chain("master")` returns the decision framework plus the live chain list, and the prompt hook already shows the trigger phrases, so a task whose shape clearly matches a chain can call that chain directly. The outcomes are PASS (no chain), `default` (freeform step-by-step thinking), and/or matching custom chains. **PASS is a legitimate result, and deciding on your own that a task is trivial is also legitimate** — chains are procedures you choose to run, not a gate on doing work. What a chain gives you is a checklist or a stage sequence written down in advance; nothing here can verify you followed it, and the project has no evidence yet that being offered one changes outcomes.
 2. **Checklist chains** return one complete checklist in a single call — apply it, no session.
 3. **Staged / freeform chains** return a `session_id`. Submit each stage via `advance_chain({session_id, expected_stage_index, stage_output})`; use `skip_reason` (staged only) to skip a stage with justification, and `done: true` (freeform only) on the final verified thought. Always pass the `expected_stage_index` from the last response — on a timeout retry, re-sending the same index is safe and idempotent.
 

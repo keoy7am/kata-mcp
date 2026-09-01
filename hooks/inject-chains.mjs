@@ -100,6 +100,14 @@ async function observe(payload, offered, context) {
   }
 }
 
+// KATA_HOOK=0 switches the injection off while leaving the MCP server up. It
+// exists so the two halves of this plugin can be tested separately: whether
+// the per-prompt list changes anything is a different question from whether
+// the chains do, and with the plugin as the only switch they cannot be told
+// apart. Emitting nothing is the whole behaviour — no header, no note — so an
+// ablation compares against a genuine absence rather than a different prompt.
+if (process.env.KATA_HOOK === "0") process.exit(0);
+
 // Read before anything else can fail: an observation of a run that then threw
 // is still worth having, and stdin is only consumed when observing is on.
 const payload = await readPayload();
