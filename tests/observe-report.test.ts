@@ -41,6 +41,11 @@ function fixture(opts: { sessions: number; turnsPerSession: number; calls?: Reco
         }),
       );
       lines.push(JSON.stringify({ type: "user", promptId, message: { content: `prompt ${t}` } }));
+      // Every turn gets a model reply; a test that wants an unanswered turn
+      // (a local slash command) removes this line for that promptId.
+      lines.push(
+        JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: `reply to ${promptId}` }] } }),
+      );
       for (const chain of opts.calls?.[promptId] ?? []) {
         lines.push(
           JSON.stringify({
@@ -117,6 +122,27 @@ describe("observe-report", () => {
     const byChain = Object.fromEntries(r.recommendations.map((x: { chain: string; action: string }) => [x.chain, x.action]));
     expect(byChain.skippy).toMatch(/checklist/);
     expect(byChain.quitter).toMatch(/abandoned/);
+  });
+
+  it("a prompt the model never answered is not a no-call turn", () => {
+    // /goal, /model and friends run locally: UserPromptSubmit fires, the hook
+    // observes the prompt, and no assistant entry ever follows. Charging that
+    // to the model as "offered a chain, called none" is how a real sample once
+    // produced a false miss.
+    const f = fixture({ sessions: 1, turnsPerSession: 3, calls: { "sess-0-p0": ["alive"] } });
+    const transcript = path.join(f.transcripts, "some-project", "sess-0.jsonl");
+    // Remove the model reply from turn p1 so it looks like a local command.
+    const kept = fs
+      .readFileSync(transcript, "utf8")
+      .split("\n")
+      .filter((l) => l && !l.includes("reply to sess-0-p1"));
+    fs.writeFileSync(transcript, kept.join("\n") + "\n", "utf8");
+    const r = run(f.project, f.transcripts, "--sample", "10");
+    expect(r.turns_without_model_reply).toBe(1);
+    expect(r.turns).toBe(2); // p0 (called) and p2 (answered, no call)
+    const prompts = r.sample.map((x: { prompt: string }) => x.prompt);
+    expect(prompts).not.toContain("prompt 1");
+    expect(prompts).toContain("prompt 2");
   });
 
   it("--sample lists only turns with no call and skips Claude Code's command echoes", () => {

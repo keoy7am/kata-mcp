@@ -82,9 +82,12 @@ Enforced by tests; listed here so a change is made knowingly:
 
 ## Open design question, deliberately undecided
 
-Advisory versus gate. Today the hook advises and nothing enforces; the first
-observation sample included a prompt that matched a chain's trigger verbatim
-and called nothing. A gate is feasible on both hosts — a `UserPromptSubmit`
+Advisory versus gate. Today the hook advises and nothing enforces. The first
+observation sample appeared to contain a prompt that matched a chain's trigger
+verbatim and called nothing; on inspection it was a local slash command that
+never reached the model at all, which is now excluded by the report and is
+itself the lesson — check the transcript before calling anything a miss. A
+gate is feasible on both hosts — a `UserPromptSubmit`
 hook marks a turn non-trivial by a rule that does not involve the model, a
 `PostToolUse` hook on `run_chain` marks that a chain ran, and a `PreToolUse`
 hook on `Edit|Write` denies until it has. It would guarantee a call, not a

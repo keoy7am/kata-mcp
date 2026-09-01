@@ -47,17 +47,25 @@ if (!existsSync(logPath)) {
   console.error("Enable them with KATA_OBSERVE=1 (or =full to record prompt text) and use the agent for a while.");
   process.exit(1);
 }
-const records = readJsonl(logPath);
 
 // ---- calls (from transcripts) ----------------------------------------------
 
-const sessions = new Set(records.map((r) => r.session_id).filter(Boolean));
+const allRecords = readJsonl(logPath);
+const sessions = new Set(allRecords.map((r) => r.session_id).filter(Boolean));
 const transcripts = transcriptIndex(sessions);
+/** prompt ids that received at least one assistant reply. */
+const answered = new Set();
 /** prompt_id -> ordered list of chain names called in that exchange. */
 const callsByPrompt = new Map();
 for (const path of transcripts.values()) {
   for (const [promptId, names] of chainsCalled(path)) callsByPrompt.set(promptId, names);
 }
+// Only turns the model answered count. A session whose transcript is missing
+// cannot be checked, so its turns are kept and flagged below rather than
+// silently dropped.
+const checkable = (r) => transcripts.has(r.session_id);
+const records = allRecords.filter((r) => !checkable(r) || answered.has(r.prompt_id));
+const unanswered = allRecords.length - records.length;
 
 // ---- runs (from traces) -----------------------------------------------------
 
@@ -174,6 +182,7 @@ if (asJson) {
         project,
         period,
         turns: records.length,
+        turns_without_model_reply: unanswered,
         sessions: sessions.size,
         sessions_without_transcript: sessions.size - transcripts.size,
         turns_with_chain_call: turnsWithCall,
@@ -194,6 +203,9 @@ if (asJson) {
 
 console.log(`kata observation report — ${project}`);
 console.log(`period ${period} · ${records.length} turns · ${sessions.size} sessions · ${turnsWithCall} turns called a chain`);
+if (unanswered > 0) {
+  console.log(`(${unanswered} observed prompts got no model reply — local slash commands, interrupts — and are excluded)`);
+}
 if (sessions.size - transcripts.size > 0) {
   console.log(`(${sessions.size - transcripts.size} sessions have no transcript on this machine; their turns count as no-call)`);
 }
@@ -226,7 +238,9 @@ if (inconclusive) {
 
 if (SAMPLE > 0) {
   console.log(`SAMPLE — ${sample.length} turns where no chain was called, for you to judge`);
-  if (!sampleHasText) {
+  if (sample.length === 0) {
+    console.log("  every answered turn called a chain — nothing to judge");
+  } else if (!sampleHasText) {
     console.log("  prompts were not recorded. Set KATA_OBSERVE=full to capture them; --sample needs the text.");
   } else {
     for (const r of sample) {
@@ -314,6 +328,11 @@ function chainsCalled(transcriptPath) {
       continue;
     }
     if (entry.type !== "assistant" || !current) continue;
+    // A prompt the model actually answered. Slash commands that run locally
+    // (/goal, /model, …) still fire UserPromptSubmit and get observed, but no
+    // assistant entry ever follows them — counting those as "no chain called"
+    // charges the model for turns it was never given.
+    answered.add(current);
     const content = entry.message?.content;
     if (!Array.isArray(content)) continue;
     for (const block of content) {

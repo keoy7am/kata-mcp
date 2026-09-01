@@ -28,6 +28,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   In the one bucket both periods populate (≥200k tokens) the split is the
   same as before: one model better on every proxy, the other worse.
 
+### Fixed
+
+- The observation report no longer counts a prompt the model never answered
+  as a turn where no chain was called. Local slash commands (`/goal`, `/model`)
+  still fire `UserPromptSubmit` and get observed, but no assistant entry ever
+  follows them; the transcript now decides, and such prompts are excluded and
+  counted separately. The first real sample produced a false "matched trigger,
+  called nothing" from exactly this.
+
 ### Changed
 
 - `skills/kata/SKILL.md` no longer says master must be called before any
