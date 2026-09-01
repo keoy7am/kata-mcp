@@ -2,7 +2,10 @@
   "mcpServers": {
     "chains": {
       "command": "npx",
-      "args": ["-y", "kata-mcp@1.0.0"]
+      "args": [
+        "-y",
+        "kata-mcp@1.0.1"
+      ]
     }
   }
 }

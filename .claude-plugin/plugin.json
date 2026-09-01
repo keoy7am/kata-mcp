@@ -1,6 +1,6 @@
 {
   "name": "kata",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Reusable thinking routines for coding agents: a master routing chain, a freeform default chain, and file-defined global/pack/project chains (MCP server + trigger skill + prompt hook)",
   "license": "MIT",
   "mcpServers": "./plugin.mcp.json"
