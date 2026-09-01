@@ -1,0 +1,51 @@
+{
+  "name": "kata-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for kata — reusable thinking routines defined as Markdown files, routed to a coding agent at the moment the task matches",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "agent",
+    "sequential-thinking",
+    "checklist",
+    "prompt-engineering"
+  ],
+  "homepage": "https://github.com/keoy7am/kata-mcp#readme",
+  "bugs": "https://github.com/keoy7am/kata-mcp/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keoy7am/kata-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Elliot Chen",
+  "type": "module",
+  "bin": {
+    "kata-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "version": "node scripts/sync-version.mjs && git add .claude-plugin/plugin.json plugin.mcp.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

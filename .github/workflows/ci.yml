@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # Windows is not optional here: chain files are addressed by filename, and
+    # reserved names, case-insensitive collisions and path separators only
+    # misbehave there.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 22.18 is the floor stated in package.json engines — the first release
+        # that runs TypeScript without a flag. Testing it keeps the floor honest.
+        node: ["22.18", "24"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  no-deps:
+    # The prompt hook runs inside a plugin checkout where nothing was installed.
+    # Unit tests cannot prove that, because the developer machine always has
+    # node_modules; this job is the only place the real condition exists.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+      - name: prompt hook runs with no dependencies installed
+        run: |
+          mkdir -p /tmp/chains
+          printf -- '---\nname: probe\ndescription: Probe. Use when verifying the hook.\nmode: checklist\n---\nbody\n' > /tmp/chains/probe.md
+          out=$(KATA_GLOBAL_DIR=/tmp/chains node hooks/inject-chains.mjs)
+          echo "$out"
+          if ! echo "$out" | grep -q "probe"; then
+            echo "hook did not list the chain"; exit 1
+          fi
+          if echo "$out" | grep -q "chain list unavailable"; then
+            echo "hook fell back to the error path"; exit 1
+          fi

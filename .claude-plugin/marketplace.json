@@ -1,0 +1,16 @@
+{
+  "name": "kata",
+  "owner": {
+    "name": "keoy7am"
+  },
+  "metadata": {
+    "description": "kata — reusable thinking routines for coding agents"
+  },
+  "plugins": [
+    {
+      "name": "kata",
+      "source": "./",
+      "description": "Reusable thinking routines for coding agents: a master routing chain, a freeform default chain, and file-defined global/pack/project chains (MCP server + trigger skill + prompt hook)"
+    }
+  ]
+}
