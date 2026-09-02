@@ -119,12 +119,24 @@ describe("gate hook", () => {
     expect(denied(tool(cwd, "PreToolUse", "Edit"))).toBe(true);
   });
 
-  it("never blocks on unreadable input", () => {
+  it("never blocks on unreadable input, and says so instead of allowing silently", () => {
+    // A gate that lets everything through is indistinguishable from one that
+    // was never wired up, so the failure is written down as its own state.
+    const cwd = fresh();
     const out = execFileSync(process.execPath, [gate], {
       encoding: "utf8",
-      env: { ...inherited, KATA_GATE: "1" },
+      env: { ...inherited, KATA_GATE: "1", CLAUDE_PROJECT_DIR: cwd },
       input: "not json",
     });
     expect(out).toBe("");
+    const rec = JSON.parse(fs.readFileSync(path.join(cwd, ".claude", "kata-gate.jsonl"), "utf8").trim());
+    expect(rec.event).toBe("unreadable-input");
+  });
+
+  it("exits as soon as stdin closes rather than waiting out its deadline", () => {
+    const cwd = fresh();
+    const t0 = Date.now();
+    tool(cwd, "PreToolUse", "Read");
+    expect(Date.now() - t0).toBeLessThan(1500);
   });
 });

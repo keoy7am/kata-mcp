@@ -13,6 +13,28 @@
 // The prompt hook arms the gate on a non-trivial prompt (see src/gate.ts).
 if (process.env.KATA_GATE !== "1") process.exit(0);
 
+const fs = await import("node:fs");
+const path = await import("node:path");
+
+// Every silent exit below is a gate that let a call through, and a gate that
+// lets everything through looks exactly like a gate that was never wired up.
+// So the failure states are written down: "unreadable input" is a third
+// answer, not a quiet "allow". KATA_GATE_TRACE=1 additionally logs every
+// invocation, for telling "hook not registered" from "hook exits early".
+function trace(cwd, record) {
+  try {
+    fs.mkdirSync(path.join(cwd, ".claude"), { recursive: true });
+    fs.appendFileSync(
+      path.join(cwd, ".claude", "kata-gate.jsonl"),
+      JSON.stringify({ ts: new Date().toISOString(), ...record }) + "\n",
+      "utf8",
+    );
+  } catch {
+    /* logging must never decide the outcome */
+  }
+}
+const fallbackCwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+
 const raw = await Promise.race([
   new Promise((resolve) => {
     let data = "";
@@ -21,23 +43,29 @@ const raw = await Promise.race([
     process.stdin.on("end", () => resolve(data));
     process.stdin.on("error", () => resolve(""));
   }),
-  new Promise((resolve) => setTimeout(() => resolve(""), 300)),
+  // unref: the timer is a deadline, not a reason to keep the process alive for
+  // two seconds after stdin has already closed (the host waits for exit).
+  new Promise((resolve) => setTimeout(() => resolve(null), 2000).unref()),
 ]);
 
 let payload;
 try {
+  if (raw === null) throw new Error("stdin timeout");
   payload = JSON.parse(raw);
-} catch {
-  process.exit(0); // never block a tool because the gate could not read its input
+} catch (err) {
+  // Never block a tool because the gate could not read its input — but say so.
+  trace(fallbackCwd, { event: "unreadable-input", reason: err?.message ?? String(err), raw_len: raw?.length ?? 0 });
+  process.exit(0);
+}
+if (process.env.KATA_GATE_TRACE) {
+  trace(payload.cwd || fallbackCwd, { event: "invoked", hook: payload.hook_event_name, tool: payload.tool_name, session_id: payload.session_id });
 }
 
 const { readGate, writeGate, isGatedCall, isGitCommit, denyPayload } = await import(
   new URL("../src/gate.ts", import.meta.url)
 );
-const fs = await import("node:fs");
-const path = await import("node:path");
 
-const cwd = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const cwd = payload.cwd || fallbackCwd;
 const session = payload.session_id || "unknown";
 const tool = payload.tool_name || "";
 const input = payload.tool_input || {};
