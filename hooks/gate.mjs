@@ -58,7 +58,14 @@ try {
   process.exit(0);
 }
 if (process.env.KATA_GATE_TRACE) {
-  trace(payload.cwd || fallbackCwd, { event: "invoked", hook: payload.hook_event_name, tool: payload.tool_name, session_id: payload.session_id });
+  trace(payload.cwd || fallbackCwd, {
+    event: "invoked",
+    hook: payload.hook_event_name,
+    tool: payload.tool_name,
+    session_id: payload.session_id,
+    agent_id: payload.agent_id ?? null,
+    agent_type: payload.agent_type ?? null,
+  });
 }
 
 const { readGate, writeGate, isGatedCall, isGitCommit, denyPayload } = await import(

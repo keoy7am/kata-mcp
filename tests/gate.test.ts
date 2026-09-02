@@ -9,9 +9,12 @@ const root = path.resolve(import.meta.dirname, "..");
 const gate = path.join(root, "hooks", "gate.mjs");
 const prompt = path.join(root, "hooks", "inject-chains.mjs");
 
-// Ambient KATA_GATE / KATA_OBSERVE on a developer machine must not leak in.
-const { KATA_GATE: _g, KATA_OBSERVE: _o, ...inherited } = process.env;
+// Ambient KATA_GATE / KATA_GATE_TRACE / KATA_OBSERVE on a developer machine
+// must not leak in: with the trace on, every invocation adds a log line and
+// the refusal counts below stop meaning anything.
+const { KATA_GATE: _g, KATA_GATE_TRACE: _t, KATA_OBSERVE: _o, ...inherited } = process.env;
 void _g;
+void _t;
 void _o;
 
 const chainDir = fs.mkdtempSync(path.join(os.tmpdir(), "gate-c-"));
