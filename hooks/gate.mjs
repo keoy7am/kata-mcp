@@ -33,6 +33,11 @@ function trace(cwd, record) {
     /* logging must never decide the outcome */
   }
 }
+// The project root, not the call's cwd: an agent spawned into a subdirectory
+// (a workflow worker in <project>/app) would otherwise read a different
+// state file from the one the prompt hook armed, and walk through unseen —
+// observed as 41 edits by workflow agents with the gate armed and not one
+// refusal, their traces sitting in three different .claude directories.
 const fallbackCwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 const raw = await Promise.race([
@@ -57,8 +62,9 @@ try {
   trace(fallbackCwd, { event: "unreadable-input", reason: err?.message ?? String(err), raw_len: raw?.length ?? 0 });
   process.exit(0);
 }
+const cwd = process.env.CLAUDE_PROJECT_DIR || payload.cwd || process.cwd();
 if (process.env.KATA_GATE_TRACE) {
-  trace(payload.cwd || fallbackCwd, {
+  trace(cwd, {
     event: "invoked",
     hook: payload.hook_event_name,
     tool: payload.tool_name,
@@ -72,7 +78,6 @@ const { readGate, writeGate, isGatedCall, isGitCommit, denyPayload } = await imp
   new URL("../src/gate.ts", import.meta.url)
 );
 
-const cwd = payload.cwd || fallbackCwd;
 const session = payload.session_id || "unknown";
 const tool = payload.tool_name || "";
 const input = payload.tool_input || {};

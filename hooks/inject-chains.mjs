@@ -84,7 +84,9 @@ async function arm(payload) {
     const { isTrivialPrompt, writeGate, GATE_MIN_CHARS_DEFAULT } = await import(new URL("../src/gate.ts", import.meta.url));
     const min = Number(process.env.KATA_GATE_MIN_CHARS) || GATE_MIN_CHARS_DEFAULT;
     if (isTrivialPrompt(typeof payload.prompt === "string" ? payload.prompt : "", min)) return;
-    const cwd = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    // Project root first, same as hooks/gate.mjs: the two must agree on the
+    // state file even when a later tool call comes from a subdirectory.
+    const cwd = process.env.CLAUDE_PROJECT_DIR || payload.cwd || process.cwd();
     writeGate(cwd, payload.session_id || "unknown", {
       armed: true,
       reason: "prompt",

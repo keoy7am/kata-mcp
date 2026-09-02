@@ -12,10 +12,13 @@ const prompt = path.join(root, "hooks", "inject-chains.mjs");
 // Ambient KATA_GATE / KATA_GATE_TRACE / KATA_OBSERVE on a developer machine
 // must not leak in: with the trace on, every invocation adds a log line and
 // the refusal counts below stop meaning anything.
-const { KATA_GATE: _g, KATA_GATE_TRACE: _t, KATA_OBSERVE: _o, ...inherited } = process.env;
+// CLAUDE_PROJECT_DIR is set when the tests run under Claude Code itself and
+// would redirect every state file to the real project.
+const { KATA_GATE: _g, KATA_GATE_TRACE: _t, KATA_OBSERVE: _o, CLAUDE_PROJECT_DIR: _p, ...inherited } = process.env;
 void _g;
 void _t;
 void _o;
+void _p;
 
 const chainDir = fs.mkdtempSync(path.join(os.tmpdir(), "gate-c-"));
 fs.writeFileSync(
@@ -120,6 +123,25 @@ describe("gate hook", () => {
     expect(out).toContain("committed");
     // Edits between commits are gated too, since the stage has no chain yet.
     expect(denied(tool(cwd, "PreToolUse", "Edit"))).toBe(true);
+  });
+
+  it("keys state on the project root, so a call from a subdirectory sees the same gate", () => {
+    // A workflow worker spawned into <project>/app reports that as its cwd.
+    const root = fresh();
+    const sub = path.join(root, "app");
+    fs.mkdirSync(sub);
+    execFileSync(process.execPath, [prompt], {
+      encoding: "utf8",
+      env: { ...inherited, KATA_GLOBAL_DIR: chainDir, KATA_PROJECT_ROOT: root, KATA_GATE: "1", CLAUDE_PROJECT_DIR: root },
+      input: JSON.stringify({ session_id: "s", prompt_id: "p", cwd: root, hook_event_name: "UserPromptSubmit", prompt: LONG }),
+    });
+    const out = execFileSync(process.execPath, [gate], {
+      encoding: "utf8",
+      env: { ...inherited, KATA_GATE: "1", CLAUDE_PROJECT_DIR: root },
+      input: JSON.stringify({ session_id: "s", cwd: sub, hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: {} }),
+    });
+    expect(denied(out)).toBe(true);
+    expect(fs.existsSync(path.join(sub, ".claude"))).toBe(false);
   });
 
   it("never blocks on unreadable input, and says so instead of allowing silently", () => {

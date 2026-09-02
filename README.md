@@ -308,7 +308,10 @@ of real work had a six-character continuation followed by 153 tool calls.
 What it guarantees is that the model *called* something before it wrote — not
 that it followed the chain; a staged chain can still be skipped through. Every
 refusal is appended to `<project>/.claude/kata-gate.jsonl` and the armed/
-disarmed state lives in `<project>/.claude/kata-gate.json`; gitignore both.
+disarmed state lives in `<project>/.claude/kata-gate.json`, where
+`<project>` is the directory the session started in (`CLAUDE_PROJECT_DIR`),
+not the cwd of the individual call — workers that run in a subdirectory
+still read the same file. Gitignore both.
 Claude Code only: Codex's hook API has not been checked for a deny decision.
 Agents spawned with the `Agent` tool are covered: their tool calls reach the
 same hooks under the parent's session id, so a child's first edit is refused
