@@ -52,7 +52,7 @@ function emit(context) {
  * gitignoring after.
  */
 async function readPayload() {
-  if (!process.env.KATA_OBSERVE) return null;
+  if (!process.env.KATA_OBSERVE && process.env.KATA_GATE !== "1") return null;
   try {
     const raw = await Promise.race([
       new Promise((resolve) => {
@@ -70,8 +70,30 @@ async function readPayload() {
   }
 }
 
+/**
+ * Routing gate (KATA_GATE=1): arm on a non-trivial prompt, disarm on a trivial
+ * one so short follow-ups never block. The rule lives in src/gate.ts; the
+ * enforcement lives in hooks/gate.mjs.
+ */
+async function arm(payload) {
+  if (process.env.KATA_GATE !== "1" || !payload) return;
+  try {
+    const { isTrivialPrompt, writeGate, GATE_MIN_CHARS_DEFAULT } = await import(new URL("../src/gate.ts", import.meta.url));
+    const min = Number(process.env.KATA_GATE_MIN_CHARS) || GATE_MIN_CHARS_DEFAULT;
+    const cwd = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const trivial = isTrivialPrompt(typeof payload.prompt === "string" ? payload.prompt : "", min);
+    writeGate(cwd, payload.session_id || "unknown", {
+      armed: !trivial,
+      reason: trivial ? "trivial prompt" : "prompt",
+      prompt_id: payload.prompt_id ?? payload.turn_id ?? null,
+    });
+  } catch {
+    /* the gate must never cost the user their chain list */
+  }
+}
+
 async function observe(payload, offered, context) {
-  if (!payload) return;
+  if (!payload || !process.env.KATA_OBSERVE) return;
   try {
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -111,6 +133,7 @@ if (process.env.KATA_HOOK === "0") process.exit(0);
 // Read before anything else can fail: an observation of a run that then threw
 // is still worth having, and stdin is only consumed when observing is on.
 const payload = await readPayload();
+await arm(payload);
 
 try {
   // Shares the real loader and LIMITS (single source for validation and caps),

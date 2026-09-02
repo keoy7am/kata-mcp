@@ -289,6 +289,30 @@ you are measuring those. The author's own before/after was confounded exactly
 that way, which is why it is reported above as finding nothing rather than as
 finding something.
 
+### Experiment: refusing to edit until a chain has run
+
+**Off by default.** `KATA_GATE=1` turns the reminder into a gate. After a
+non-trivial prompt, the first `Edit`/`Write` and every `git commit` are
+refused by a `PreToolUse` hook until some chain has been called in that
+prompt — `run_chain("master")` is enough, and a PASS verdict counts. After a
+commit the gate re-arms, so a long autonomous run is gated once per commit
+stage rather than once at the top.
+
+"Non-trivial" is a rule, not the model: 40 characters or more
+(`KATA_GATE_MIN_CHARS`) and not a bare acknowledgement (`ok`, `好`, `繼續`…).
+It is crude on purpose. The model's own judgement of when to route is the
+thing under test, so it cannot also be the judge.
+
+What it guarantees is that the model *called* something before it wrote — not
+that it followed the chain; a staged chain can still be skipped through. Every
+refusal is appended to `<project>/.claude/kata-gate.jsonl` and the armed/
+disarmed state lives in `<project>/.claude/kata-gate.json`; gitignore both.
+Claude Code only: Codex's hook API has not been checked for a deny decision.
+
+Cost: one extra tool round-trip per gated stage, and a refusal the model has
+to recover from when it forgets. Whether that buys anything is the question
+the switch exists to ask; nothing here claims it does.
+
 ## Writing your own chain
 
 The shipped library is a starting point, not the product. The product is the

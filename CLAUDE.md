@@ -82,19 +82,29 @@ Enforced by tests; listed here so a change is made knowingly:
 
 ## Open design question, deliberately undecided
 
-Advisory versus gate. Today the hook advises and nothing enforces. The first
-observation sample appeared to contain a prompt that matched a chain's trigger
-verbatim and called nothing; on inspection it was a local slash command that
-never reached the model at all, which is now excluded by the report and is
-itself the lesson — check the transcript before calling anything a miss. A
-gate is feasible on both hosts — a `UserPromptSubmit`
-hook marks a turn non-trivial by a rule that does not involve the model, a
-`PostToolUse` hook on `run_chain` marks that a chain ran, and a `PreToolUse`
-hook on `Edit|Write` denies until it has. It would guarantee a call, not a
-careful walk, and it would change what this project claims to be. It is not
-built. The decision waits on a short observation sample from real work, and
-on checking whether slash-command expansions are simply crowding the injected
-list out of the model's attention — a fixable cause that would come first.
+Advisory versus gate. By default the hook advises and nothing enforces. The
+first observation sample appeared to contain a prompt that matched a chain's
+trigger verbatim and called nothing; on inspection it was a local slash
+command that never reached the model at all, which is now excluded by the
+report and is itself the lesson — check the transcript before calling
+anything a miss.
+
+The gate exists as an opt-in experiment (`KATA_GATE=1`, `src/gate.ts`,
+`hooks/gate.mjs`): a `UserPromptSubmit` hook arms a per-session marker by a
+rule that does not involve the model, a `PreToolUse` hook on
+`Edit|Write|MultiEdit|NotebookEdit` and on `Bash` running `git commit` denies
+while armed, a `PostToolUse` hook on `run_chain` disarms and on `git commit`
+re-arms. It guarantees a call, not a careful walk. Switching it on by default
+would change what this project claims to be, and that decision waits on a
+sample of real work run with it on: how often it fires, whether the calls it
+forces are PASS verdicts or actual walks, and whether the model routes around
+it. Only refusal counts belong in this repository; no prompt text, no project
+names from the sample.
+
+Observation mode and the gate see one prompt id for a whole autonomous run
+(a Stop-hook continuation does not fire `UserPromptSubmit`), which is why the
+gate re-arms on commit rather than on prompt alone. Codex: unverified whether
+its `PreToolUse` honours a deny decision.
 
 ## Owner's decisions, so they are not relitigated
 

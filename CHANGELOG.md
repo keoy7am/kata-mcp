@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `KATA_GATE=1` (experiment, off by default): a `PreToolUse` hook refuses the
+  first `Edit`/`Write` and every `git commit` after a non-trivial prompt until
+  a chain has been called in that prompt, and re-arms after each commit.
+  "Non-trivial" is a length-and-acknowledgement rule, not the model. Refusals
+  are logged to `<project>/.claude/kata-gate.jsonl`. It guarantees a call,
+  not a followed procedure, and nothing about its effect is claimed. The
+  off path exits before reading stdin and is tested to write nothing.
 - `KATA_HOOK=0` switches the prompt injection off while the MCP server stays
   up, and emits nothing at all rather than an "off" note, so an ablation
   compares against genuine absence. With the plugin as the only switch, "does

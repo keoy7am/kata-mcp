@@ -94,7 +94,7 @@ describe("prompt hook wiring", () => {
     // a hook to anything else turns "install the plugin" into "install a runtime
     // first", and the failure is silent: the prompt just loses its chain list.
     const cfg = read("hooks/hooks.json");
-    for (const event of ["UserPromptSubmit", "SessionStart"]) {
+    for (const event of ["UserPromptSubmit", "SessionStart", "PreToolUse", "PostToolUse"]) {
       expect(cfg.hooks[event][0].hooks[0].command.startsWith("node ")).toBe(true);
     }
   });
@@ -104,7 +104,7 @@ describe("prompt hook wiring", () => {
     // run, so every module it reaches may only use node: builtins and relative
     // paths. A bare specifier added to any of these files still passes every
     // other test on a developer machine and breaks on every user's machine.
-    for (const file of ["hooks/inject-chains.mjs", "src/loader.ts", "src/types.ts", "src/builtins.ts"]) {
+    for (const file of ["hooks/inject-chains.mjs", "hooks/gate.mjs", "src/gate.ts", "src/loader.ts", "src/types.ts", "src/builtins.ts"]) {
       const src = fs.readFileSync(path.join(root, file), "utf8");
       const specifiers = [...src.matchAll(/(?:^|\s)(?:import|export)[^;]*?from\s+["']([^"']+)["']/g)].map(
         (m) => m[1],

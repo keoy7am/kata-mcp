@@ -46,6 +46,10 @@ trail: anything with write access to the project can edit them.
   records the prompt text verbatim. Treat that file the way you would treat a
   shell history: gitignore it, and do not enable `full` on a machine where you
   paste credentials into prompts.
+- `<project>/.claude/kata-gate.json` and `<project>/.claude/kata-gate.jsonl`,
+  **only when `KATA_GATE=1`** — off by default. The first holds per-session
+  armed/disarmed state; the second logs each refused tool call (tool name,
+  session and prompt ids, no prompt text). Gitignore both.
 
 Nothing else on your filesystem is written, and no path outside those
 directories is ever constructed from user- or model-supplied input.
