@@ -71,20 +71,23 @@ async function readPayload() {
 }
 
 /**
- * Routing gate (KATA_GATE=1): arm on a non-trivial prompt, disarm on a trivial
- * one so short follow-ups never block. The rule lives in src/gate.ts; the
- * enforcement lives in hooks/gate.mjs.
+ * Routing gate (KATA_GATE=1): arm on a non-trivial prompt. A trivial prompt
+ * leaves the marker as it is rather than disarming it: the first sample of
+ * real work had a six-character "continue the task" followed by 153 tool
+ * calls, so a short prompt inherits the blast radius of the task before it,
+ * and the only thing that should clear the gate is a chain call. The rule
+ * lives in src/gate.ts; the enforcement lives in hooks/gate.mjs.
  */
 async function arm(payload) {
   if (process.env.KATA_GATE !== "1" || !payload) return;
   try {
     const { isTrivialPrompt, writeGate, GATE_MIN_CHARS_DEFAULT } = await import(new URL("../src/gate.ts", import.meta.url));
     const min = Number(process.env.KATA_GATE_MIN_CHARS) || GATE_MIN_CHARS_DEFAULT;
+    if (isTrivialPrompt(typeof payload.prompt === "string" ? payload.prompt : "", min)) return;
     const cwd = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    const trivial = isTrivialPrompt(typeof payload.prompt === "string" ? payload.prompt : "", min);
     writeGate(cwd, payload.session_id || "unknown", {
-      armed: !trivial,
-      reason: trivial ? "trivial prompt" : "prompt",
+      armed: true,
+      reason: "prompt",
       prompt_id: payload.prompt_id ?? payload.turn_id ?? null,
     });
   } catch {

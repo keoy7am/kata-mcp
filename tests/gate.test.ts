@@ -93,10 +93,16 @@ describe("gate hook", () => {
     expect(tool(cwd, "PreToolUse", "Edit")).toBe("");
   });
 
-  it("lets a trivial follow-up through, and disarms what the previous prompt armed", () => {
+  it("a trivial follow-up inherits the gate the previous prompt left", () => {
+    // "continue" after a task is the task; only a chain call clears the gate.
     const cwd = fresh();
+    submit(cwd, "ok");
+    expect(fs.existsSync(path.join(cwd, ".claude", "kata-gate.json"))).toBe(false);
     submit(cwd, LONG);
     submit(cwd, "ok");
+    expect(denied(tool(cwd, "PreToolUse", "Edit"))).toBe(true);
+    tool(cwd, "PostToolUse", "mcp__plugin_kata_chains__run_chain", { name: "master" });
+    submit(cwd, "繼續完成任務");
     expect(tool(cwd, "PreToolUse", "Edit")).toBe("");
   });
 

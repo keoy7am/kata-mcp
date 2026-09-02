@@ -155,7 +155,7 @@ node scripts/observe-report.mjs            # --project <dir>  --sample N  --json
 
 **預設關閉。** `KATA_GATE=1` 把提醒變成閘門：非瑣碎的 prompt 之後，第一次 `Edit`/`Write` 與每一次 `git commit` 都會被 `PreToolUse` hook 拒絕，直到這一輪呼叫過任何一條鏈——`run_chain("master")` 就夠，判 PASS 也算。commit 之後閘門重新上膛，所以一段長的自主執行是**每個 commit 階段各擋一次**，不是只在開頭擋一次。
 
-「非瑣碎」是規則不是模型：40 個字元以上（`KATA_GATE_MIN_CHARS`）且不是純粹的應答（`ok`、`好`、`繼續`……）。它刻意粗糙。模型自己「何時該路由」的判斷正是受測物，所以不能同時當裁判。
+「非瑣碎」是規則不是模型：40 個字元以上（`KATA_GATE_MIN_CHARS`）且不是純粹的應答（`ok`、`好`、`繼續`……）。它刻意粗糙。模型自己「何時該路由」的判斷正是受測物，所以不能同時當裁判。瑣碎的 prompt **不會解除**閘門：任務之後的一句「繼續」就是那個任務——實跑的第一批樣本裡，一句六個字的續作指令後面跟著 153 次工具呼叫。
 
 它保證的是模型在動手寫之前**呼叫過**什麼——不保證它照著鏈走；staged 鏈仍然可以一路 skip 過去。每次拒絕會追加到 `<專案>/.claude/kata-gate.jsonl`，上膛狀態放在 `<專案>/.claude/kata-gate.json`；兩個都要 gitignore。只支援 Claude Code：Codex 的 hook API 尚未驗證能否回傳 deny。
 

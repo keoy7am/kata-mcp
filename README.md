@@ -301,7 +301,9 @@ stage rather than once at the top.
 "Non-trivial" is a rule, not the model: 40 characters or more
 (`KATA_GATE_MIN_CHARS`) and not a bare acknowledgement (`ok`, `好`, `繼續`…).
 It is crude on purpose. The model's own judgement of when to route is the
-thing under test, so it cannot also be the judge.
+thing under test, so it cannot also be the judge. A trivial prompt does not
+disarm the gate: "continue" after a task is the task, and the first sample
+of real work had a six-character continuation followed by 153 tool calls.
 
 What it guarantees is that the model *called* something before it wrote — not
 that it followed the chain; a staged chain can still be skipped through. Every

@@ -11,7 +11,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `KATA_GATE=1` (experiment, off by default): a `PreToolUse` hook refuses the
   first `Edit`/`Write` and every `git commit` after a non-trivial prompt until
   a chain has been called in that prompt, and re-arms after each commit.
-  "Non-trivial" is a length-and-acknowledgement rule, not the model. Refusals
+  "Non-trivial" is a length-and-acknowledgement rule, not the model; a
+  trivial prompt leaves the gate as it is, since a short "continue" inherits
+  the task before it. Refusals
   are logged to `<project>/.claude/kata-gate.jsonl`. It guarantees a call,
   not a followed procedure, and nothing about its effect is claimed. The
   off path exits before reading stdin and is tested to write nothing.
