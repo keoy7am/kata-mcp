@@ -157,7 +157,7 @@ node scripts/observe-report.mjs            # --project <dir>  --sample N  --json
 
 「非琐碎」是规则不是模型：40 个字符以上（`KATA_GATE_MIN_CHARS`）且不是纯粹的应答（`ok`、`好`、`继续`……）。它刻意粗糙。模型自己「何时该路由」的判断正是受测物，所以不能同时当裁判。琐碎的 prompt **不会解除**闸门：任务之后的一句「继续」就是那个任务——实跑的第一批样本里，一句六个字的续作指令后面跟着 153 次工具调用。
 
-它保证的是模型在动手写之前**调用过**什么——不保证它照着链走；staged 链仍然可以一路 skip 过去。每次拒绝会追加到 `<项目>/.claude/kata-gate.jsonl`，上膛状态放在 `<项目>/.claude/kata-gate.json`；两个都要 gitignore。只支持 Claude Code：Codex 的 hook API 尚未验证能否返回 deny。
+它保证的是模型在动手写之前**调用过**什么——不保证它照着链走；staged 链仍然可以一路 skip 过去。每次拒绝会追加到 `<项目>/.claude/kata-gate.jsonl`，上膛状态放在 `<项目>/.claude/kata-gate.json`；两个都要 gitignore。只支持 Claude Code：Codex 的 hook API 尚未验证能否返回 deny。用 `Agent` 工具派出的子代理也在范围内：它们的工具调用走同一组 hook、挂在父 session 的 id 底下，所以子代理的第一次编辑会被拦，直到这个 session 里有谁调用过链；子代理自己调用也算，解除对所有人生效。trace 会记 `agent_id` 与 `agent_type`，事后分得出是谁。
 
 工具 hook 是 Claude Code 进程启动时读的，所以开启之后要开一个新 session；已经在跑的 session 会继续全部放行，而且不会有任何消息。`KATA_GATE_TRACE=1` 会把每次调用都记进同一个文件，用来分辨「没接上」与「接上了但放行」：一条记录都没有就是前者。
 

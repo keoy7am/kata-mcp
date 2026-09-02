@@ -310,6 +310,11 @@ that it followed the chain; a staged chain can still be skipped through. Every
 refusal is appended to `<project>/.claude/kata-gate.jsonl` and the armed/
 disarmed state lives in `<project>/.claude/kata-gate.json`; gitignore both.
 Claude Code only: Codex's hook API has not been checked for a deny decision.
+Agents spawned with the `Agent` tool are covered: their tool calls reach the
+same hooks under the parent's session id, so a child's first edit is refused
+until someone in that session has called a chain, and the child's own call
+clears it for everyone. The trace records `agent_id` and `agent_type` so
+the two can be told apart afterwards.
 
 The tool hooks are read when a Claude Code process starts, so after turning
 this on, start a new session; a session that was already running keeps
