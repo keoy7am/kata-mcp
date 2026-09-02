@@ -153,13 +153,13 @@ node scripts/observe-report.mjs            # --project <dir>  --sample N  --json
 
 ### 实验：没跑过链就拒绝编辑
 
-**默认关闭。** `KATA_GATE=1` 把提醒变成闸门：非琐碎的 prompt 之后，第一次 `Edit`/`Write` 与每一次 `git commit` 都会被 `PreToolUse` hook 拒绝，直到这一轮调用过任何一条链——`run_chain("master")` 就够，判 PASS 也算。commit 之后闸门重新上膛，所以一段长的自主执行是**每个 commit 阶段各拦一次**，不是只在开头拦一次。
+**默认关闭。** `KATA_GATE=1` 把提醒变成闸门：非琐碎的 prompt 之后，第一次 `Edit`/`Write` 与每一次 `git commit` 都会被 `PreToolUse` hook 拒绝，直到这一轮调用过任何一条链——`run_chain("master")` 就够，判 PASS 也算，对进行中的链做 `advance_chain` 也算。commit 之后闸门重新上膛，所以一段长的自主执行是**每个 commit 阶段各拦一次**，不是只在开头拦一次。
 
 「非琐碎」是规则不是模型：40 个字符以上（`KATA_GATE_MIN_CHARS`）且不是纯粹的应答（`ok`、`好`、`继续`……）。它刻意粗糙。模型自己「何时该路由」的判断正是受测物，所以不能同时当裁判。琐碎的 prompt **不会解除**闸门：任务之后的一句「继续」就是那个任务——实跑的第一批样本里，一句六个字的续作指令后面跟着 153 次工具调用。
 
 它保证的是模型在动手写之前**调用过**什么——不保证它照着链走；staged 链仍然可以一路 skip 过去。每次拒绝会追加到 `<项目>/.claude/kata-gate.jsonl`，上膛状态放在 `<项目>/.claude/kata-gate.json`；`<项目>` 是 session 启动的目录（`CLAUDE_PROJECT_DIR`），不是单次调用的 cwd——在子目录里跑的 worker 读的仍是同一个文件。两个都要 gitignore。只支持 Claude Code：Codex 的 hook API 尚未验证能否返回 deny。用 `Agent` 工具派出的子代理也在范围内：它们的工具调用走同一组 hook、挂在父 session 的 id 底下，所以子代理的第一次编辑会被拦，直到这个 session 里有谁调用过链；子代理自己调用也算，解除对所有人生效。trace 会记 `agent_id` 与 `agent_type`，事后分得出是谁。
 
-工具 hook 是 Claude Code 进程启动时读的，所以开启之后要开一个新 session；已经在跑的 session 会继续全部放行，而且不会有任何消息。`KATA_GATE_TRACE=1` 会把每次调用都记进同一个文件，用来分辨「没接上」与「接上了但放行」：一条记录都没有就是前者。
+工具 hook 是 Claude Code 进程启动时读的，所以开启之后要开一个新 session 或打 `/reload-plugins`；已经在跑的 session 会继续全部放行，而且不会有任何消息。重载同时会重启 MCP server，而 staged 链的 session 只存在它的内存里：走到一半的链会变成 `SESSION_LOST`，得重新开始。在两条链之间重载，不要在一条链中间。`KATA_GATE_TRACE=1` 会把每次调用都记进同一个文件，用来分辨「没接上」与「接上了但放行」：一条记录都没有就是前者。
 
 代价：每个被拦的阶段多一次工具往返，以及模型忘记时要从一次拒绝中恢复。这样换不换得到什么，正是这个开关存在要问的问题；这里没有任何地方宣称它换得到。
 

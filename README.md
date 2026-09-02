@@ -294,9 +294,10 @@ finding something.
 **Off by default.** `KATA_GATE=1` turns the reminder into a gate. After a
 non-trivial prompt, the first `Edit`/`Write` and every `git commit` are
 refused by a `PreToolUse` hook until some chain has been called in that
-prompt — `run_chain("master")` is enough, and a PASS verdict counts. After a
-commit the gate re-arms, so a long autonomous run is gated once per commit
-stage rather than once at the top.
+prompt — `run_chain("master")` is enough, a PASS verdict counts, and so does
+an `advance_chain` on a chain already in progress. After a commit the gate
+re-arms, so a long autonomous run is gated once per commit stage rather than
+once at the top.
 
 "Non-trivial" is a rule, not the model: 40 characters or more
 (`KATA_GATE_MIN_CHARS`) and not a bare acknowledgement (`ok`, `好`, `繼續`…).
@@ -320,8 +321,11 @@ clears it for everyone. The trace records `agent_id` and `agent_type` so
 the two can be told apart afterwards.
 
 The tool hooks are read when a Claude Code process starts, so after turning
-this on, start a new session; a session that was already running keeps
-allowing everything, with no message. `KATA_GATE_TRACE=1` logs every
+this on, start a new session or run `/reload-plugins`; a session that was
+already running keeps allowing everything, with no message. Reloading also
+restarts the MCP server, and staged-chain sessions live in its memory: a
+chain that was mid-walk comes back as `SESSION_LOST` and has to be started
+again. Reload between chains, not during one. `KATA_GATE_TRACE=1` logs every
 invocation to the same file, which is how to tell "not wired up" from
 "wired up and allowing": no records at all means the former.
 

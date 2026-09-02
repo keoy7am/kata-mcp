@@ -73,7 +73,11 @@ export function writeGate(cwd: string, sessionId: string, state: GateState): voi
     /* fresh file */
   }
   all[sessionId] = { ...state, ts: new Date().toISOString() };
-  fs.writeFileSync(file, JSON.stringify(all, null, 2) + "\n", "utf8");
+  // Write-then-rename so a reader never sees a half-written file: several
+  // workers can hit this at once, and a torn JSON reads back as "not armed".
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(all, null, 2) + "\n", "utf8");
+  fs.renameSync(tmp, file);
 }
 
 export function denyPayload(reason: string): string {

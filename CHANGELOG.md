@@ -13,7 +13,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a chain has been called in that prompt, and re-arms after each commit.
   "Non-trivial" is a length-and-acknowledgement rule, not the model; a
   trivial prompt leaves the gate as it is, since a short "continue" inherits
-  the task before it. Refusals
+  the task before it; `advance_chain` clears it like `run_chain` does, so a
+  chain in progress is not interrupted by the next prompt. State is keyed on
+  the project root, written atomically, and a failed write is logged rather
+  than surfaced as a hook error. Refusals
   are logged to `<project>/.claude/kata-gate.jsonl`. It guarantees a call,
   not a followed procedure, and nothing about its effect is claimed. The
   off path exits before reading stdin and is tested to write nothing.

@@ -125,6 +125,28 @@ describe("gate hook", () => {
     expect(denied(tool(cwd, "PreToolUse", "Edit"))).toBe(true);
   });
 
+  it("advance_chain clears the gate too, so a chain in progress is not interrupted by a new prompt", () => {
+    const cwd = fresh();
+    submit(cwd, LONG);
+    tool(cwd, "PostToolUse", "mcp__plugin_kata_chains__advance_chain", { session_id: "x", expected_stage_index: 2 });
+    expect(tool(cwd, "PreToolUse", "Edit")).toBe("");
+    // The wiring must agree with the code: the matcher has to route advance_chain here.
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, "hooks", "hooks.json"), "utf8"));
+    expect(cfg.hooks.PostToolUse[0].matcher.split("|")).toContain("mcp__plugin_kata_chains__advance_chain");
+  });
+
+  it("a failed state write is logged, not surfaced as a hook error", () => {
+    // A worker that loses a write race must not print a hook failure to the
+    // user's screen; the gate simply keeps its previous state. A directory
+    // where the state file should be makes the rename fail deterministically.
+    const cwd = fresh();
+    fs.mkdirSync(path.join(cwd, ".claude", "kata-gate.json"), { recursive: true });
+    const out = tool(cwd, "PostToolUse", "Bash", { command: "git commit -m x" });
+    expect(out).toBe("");
+    const log = fs.readFileSync(path.join(cwd, ".claude", "kata-gate.jsonl"), "utf8");
+    expect(log).toContain("state-write-failed");
+  });
+
   it("keys state on the project root, so a call from a subdirectory sees the same gate", () => {
     // A workflow worker spawned into <project>/app reports that as its cwd.
     const root = fresh();

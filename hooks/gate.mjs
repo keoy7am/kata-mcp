@@ -84,10 +84,20 @@ const input = payload.tool_input || {};
 const state = readGate(cwd, session);
 
 if (payload.hook_event_name === "PostToolUse") {
-  if (/run_chain$/.test(tool)) {
-    writeGate(cwd, session, { armed: false, reason: `disarmed by ${tool}`, prompt_id: state.prompt_id ?? null });
-  } else if (tool === "Bash" && isGitCommit(input.command)) {
-    writeGate(cwd, session, { armed: true, reason: "commit", prompt_id: state.prompt_id ?? null });
+  // advance_chain counts as much as run_chain: a staged chain that is still
+  // being walked when a new prompt arrives is exactly the case the gate
+  // exists to reward, not to interrupt (seen live: a Write refused mid-chain,
+  // the model re-ran run_chain just to clear it).
+  try {
+    if (/(run_chain|advance_chain)$/.test(tool)) {
+      writeGate(cwd, session, { armed: false, reason: `disarmed by ${tool}`, prompt_id: state.prompt_id ?? null });
+    } else if (tool === "Bash" && isGitCommit(input.command)) {
+      writeGate(cwd, session, { armed: true, reason: "commit", prompt_id: state.prompt_id ?? null });
+    }
+  } catch (err) {
+    // Parallel workers write this file at the same moment; on Windows one of
+    // them can lose. A failed write is logged, never surfaced as a hook error.
+    trace(cwd, { event: "state-write-failed", hook: "PostToolUse", tool, reason: err?.message ?? String(err) });
   }
   process.exit(0);
 }
