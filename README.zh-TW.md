@@ -159,6 +159,8 @@ node scripts/observe-report.mjs            # --project <dir>  --sample N  --json
 
 它保證的是模型在動手寫之前**呼叫過**什麼——不保證它照著鏈走；staged 鏈仍然可以一路 skip 過去。每次拒絕會追加到 `<專案>/.claude/kata-gate.jsonl`，上膛狀態放在 `<專案>/.claude/kata-gate.json`；兩個都要 gitignore。只支援 Claude Code：Codex 的 hook API 尚未驗證能否回傳 deny。
 
+工具 hook 是 Claude Code 程序啟動時讀的，所以開啟之後要開一個新 session；已經在跑的 session 會繼續全部放行，而且不會有任何訊息。`KATA_GATE_TRACE=1` 會把每次呼叫都記進同一個檔，用來分辨「沒接上」與「接上了但放行」：一筆記錄都沒有就是前者。
+
 代價：每個被擋的階段多一次工具往返，以及模型忘記時要從一次拒絕中恢復。這樣換不換得到什麼，正是這個開關存在要問的問題；這裡沒有任何地方宣稱它換得到。
 
 ## 寫你自己的鏈

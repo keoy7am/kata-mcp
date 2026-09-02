@@ -311,6 +311,12 @@ refusal is appended to `<project>/.claude/kata-gate.jsonl` and the armed/
 disarmed state lives in `<project>/.claude/kata-gate.json`; gitignore both.
 Claude Code only: Codex's hook API has not been checked for a deny decision.
 
+The tool hooks are read when a Claude Code process starts, so after turning
+this on, start a new session; a session that was already running keeps
+allowing everything, with no message. `KATA_GATE_TRACE=1` logs every
+invocation to the same file, which is how to tell "not wired up" from
+"wired up and allowing": no records at all means the former.
+
 Cost: one extra tool round-trip per gated stage, and a refusal the model has
 to recover from when it forgets. Whether that buys anything is the question
 the switch exists to ask; nothing here claims it does.
